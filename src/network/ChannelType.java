@@ -1,3 +1,5 @@
+package network;
+
 /**
  * Multicast Channel Type
  */

@@ -1,10 +1,12 @@
+package storage;
+
 import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 /**
- * Created by Pedro Castro on 10/03/2016.
+ * File chunker
  */
 public class FileChunker {
 
@@ -13,30 +15,40 @@ public class FileChunker {
      */
     private static final int MAX_SIZE_CHUNK = 64000;
 
-
+    /**
+     * Chunk a file
+     * @param file file to chunk
+     * @return list with all the chunks of the file
+     * @throws NoSuchAlgorithmException
+     * @throws IOException
+     */
     public static ArrayList<Chunk> chunkFile(File file) throws NoSuchAlgorithmException, IOException {
-
         int part = 0;
-
         ArrayList<Chunk> chunkList = new ArrayList<>();
 
         String id = getFileChecksum(file);
+        if(id.equalsIgnoreCase("error"))
+            return null;
 
         byte[] chunk = new byte[MAX_SIZE_CHUNK];
-
-        BufferedInputStream inputStream = new BufferedInputStream (new FileInputStream(file));
+        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
 
         //TODO ultimo chunk tem que ter tamanho 0 se o file tiver tamanho certo
-        //int temp;
 
-        while((inputStream.read(chunk)) > 0){
-            Chunk newChunk = new Chunk(id,part++,chunk);
+        while ((inputStream.read(chunk)) > 0) {
+            Chunk newChunk = new Chunk(id, part++, chunk);
             chunkList.add(newChunk);
         }
+
         return chunkList;
     }
-    public static String getFileChecksum(File file) throws NoSuchAlgorithmException, IOException {
 
+    /**
+     * Get the file checksum in SHA-256
+     * @param file file to get the file checksum
+     * @return SHA-256 file checksum
+     */
+    public static String getFileChecksum(File file) {
         try (FileInputStream inputStream = new FileInputStream(file)) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
@@ -55,12 +67,18 @@ public class FileChunker {
             return "error";
         }
     }
-    private static String convertByteArrayToHexString(byte[] arrayBytes) {
-        StringBuffer stringBuffer = new StringBuffer();
-        for (int i = 0; i < arrayBytes.length; i++) {
-            stringBuffer.append(Integer.toString((arrayBytes[i] & 0xff) + 0x100, 16)
+
+    /**
+     * Convert a byte array to a hexadecimal string
+     * @param bytes bytes array to be converted
+     * @return converted hexadecimal string
+     */
+    private static String convertByteArrayToHexString(byte[] bytes) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (byte aByte : bytes) {
+            stringBuilder.append(Integer.toString((aByte & 0xff) + 0x100, 16)
                     .substring(1));
         }
-        return stringBuffer.toString();
+        return stringBuilder.toString();
     }
 }
