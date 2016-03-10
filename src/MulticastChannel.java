@@ -16,9 +16,9 @@ public class MulticastChannel {
     private static final int MAX_SIZE_PACKET = 64000;
 
     /**
-     * Multicast Channel name
+     * Multicast Channel type
      */
-    private final String name;
+    private final ChannelType type;
 
     /**
      * Address of the multicast socket
@@ -47,13 +47,13 @@ public class MulticastChannel {
 
     /**
      * Constructor of MulticastChannel
-     * @param name name of the multicast channel
+     * @param type type of the multicast channel
      * @param address address of the multicast channel
      * @param port port of the multicast channel
      * @throws IOException error when creating multicast socket
      */
-    public MulticastChannel(final String name, final InetAddress address, final int port) throws IOException {
-        this.name = name;
+    public MulticastChannel(final ChannelType type, final InetAddress address, final int port) throws IOException {
+        this.type = type;
         this.address = address;
         this.port = port;
 
@@ -67,11 +67,11 @@ public class MulticastChannel {
     }
 
     /**
-     * Get the name of the channel
-     * @return name of the channel
+     * Get the type of the channel
+     * @return type of the channel
      */
-    public String getName() {
-        return name;
+    public ChannelType getType() {
+        return type;
     }
 
     /**
@@ -103,7 +103,7 @@ public class MulticastChannel {
         } catch (SocketTimeoutException e) {
             return null;
         } catch (IOException e) {
-            System.out.println(name + ": Error while reading. " + e.getMessage());
+            System.out.println(type + ": Error while reading. " + e.getMessage());
             return null;
         }
     }
@@ -118,7 +118,7 @@ public class MulticastChannel {
             multiCastSocket.send(new DatagramPacket(message, message.length, address, port));
             return true;
         } catch (IOException e) {
-            System.out.println(name + ": Error while writing. " + e.getMessage());
+            System.out.println(type + ": Error while writing. " + e.getMessage());
             return false;
         }
     }
@@ -130,7 +130,7 @@ public class MulticastChannel {
         try {
             multiCastSocket.leaveGroup(address);
         } catch (IOException e) {
-            System.out.println(name + ": Error while leaving group. " + e.getMessage());
+            System.out.println(type + ": Error while leaving group. " + e.getMessage());
         }
         multiCastSocket.close();
     }
