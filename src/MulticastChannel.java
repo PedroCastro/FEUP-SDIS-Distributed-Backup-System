@@ -2,47 +2,12 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Multicast Connection
  */
 public class MulticastChannel {
-
-    /**
-     * List with all multicast channels
-     */
-    private static List<MulticastChannel> multicastChannels = new ArrayList<>();
-
-    /**
-     * Create a multicast channel
-     * @param name name of the channel
-     * @param address address name of the channel
-     * @param port port of the channel
-     * @return multicast channel
-     */
-    public static MulticastChannel createChannel(final String name, final String address, final int port) {
-        try {
-            return new MulticastChannel(name, InetAddress.getByName(address), port);
-        } catch (IOException e) {
-            System.out.println(name + ": Error while creating channel. " + e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * Get a multicast channel by its name
-     * @param channelName name of the channel
-     * @return channel with that name
-     */
-    public static MulticastChannel getChannelByName(final String channelName) {
-        for(MulticastChannel channel : multicastChannels)
-            if(channel.getName().equalsIgnoreCase(channelName))
-                return channel;
-        return null;
-    }
 
     /**
      * Maximum size per packet
@@ -86,7 +51,7 @@ public class MulticastChannel {
      * @param port port of the multicast channel
      * @throws IOException error when creating multicast socket
      */
-    private MulticastChannel(final String name, final InetAddress address, final int port) throws IOException {
+    public MulticastChannel(final String name, final InetAddress address, final int port) throws IOException {
         this.name = name;
         this.address = address;
         this.port = port;
@@ -98,9 +63,6 @@ public class MulticastChannel {
         // Cached items
         this.buffer = new byte[MAX_SIZE_PACKET];
         this.dataPacket = new DatagramPacket(buffer, buffer.length);
-
-        // Add to multicast channels
-        multicastChannels.add(this);
     }
 
     /**
@@ -166,8 +128,5 @@ public class MulticastChannel {
             System.out.println(name + ": Error while leaving group. " + e.getMessage());
         }
         multiCastSocket.close();
-
-        // Remove from channels list
-        multicastChannels.remove(this);
     }
 }
