@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 /**
@@ -96,11 +97,15 @@ public class MulticastChannel {
     public byte[] read() {
         Arrays.fill(buffer, (byte) 0); // Clear buffer
         try {
+            multiCastSocket.setSoTimeout(1000); // Wait one second to read data
             multiCastSocket.receive(dataPacket);
+            return dataPacket.getData();
+        } catch (SocketTimeoutException e) {
+            return null;
         } catch (IOException e) {
             System.out.println(name + ": Error while reading. " + e.getMessage());
+            return null;
         }
-        return dataPacket.getData();
     }
 
     /**
