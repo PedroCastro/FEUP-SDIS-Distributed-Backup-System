@@ -39,6 +39,12 @@ public class BackupService {
 
         // Start the service
         instance.startService();
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        instance.stopService();
     }
 
     /**
@@ -113,6 +119,8 @@ public class BackupService {
             Thread channelThread = new Thread() {
                 @Override
                 public void run() {
+                    System.out.println(channel.getName() + " is listening.");
+
                     byte[] data;
                     while(isRunning.get()) {
                         data = channel.read();
@@ -126,6 +134,8 @@ public class BackupService {
             channelThread.start();
             multicastChannels.put(channel, channelThread);
         }
+
+        System.out.println("Backup service is now running.");
     }
 
     /**
@@ -135,6 +145,19 @@ public class BackupService {
         isRunning.set(false);
 
         // Close all multicast channels
-        multicastChannels.keySet().forEach(MulticastChannel::close);
+        for(Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
+            // Wait for thread to finish
+            try {
+                entry.getValue().join();
+            } catch (InterruptedException ignored) {
+            }
+
+            // Close safely the channel
+            MulticastChannel channel = entry.getKey();
+            System.out.println(channel.getName() + " has been closed.");
+            channel.close();
+        }
+
+        System.out.println("Backup service is now stopped.");
     }
 }
