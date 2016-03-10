@@ -1,3 +1,6 @@
+import network.ChannelType;
+import network.MulticastChannel;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
@@ -133,7 +136,7 @@ public class BackupService {
      * Start listening the a multicast channel
      * @param channel channel to listen to
      */
-    private void listenChannel(MulticastChannel channel) {
+    private void listenChannel(final MulticastChannel channel) {
         final Thread mcChannelThread = new Thread() {
             @Override
             public void run() {
