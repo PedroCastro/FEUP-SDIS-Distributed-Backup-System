@@ -23,12 +23,18 @@ public class BackupService {
      * @param args arguments sent to the console
      */
     public static void main(String[] args) throws IOException {
+        if(args.length < 7) {
+            System.out.println("Please execute the backup service using the following format:");
+            System.out.println("java -jar BackupService <serverId> <mc_address> <mc_port> <mdb_address> <mdb_port> <mdr_address> <mdr_port>");
+            return;
+        }
+
         instance = new BackupService(args[0]);
 
         // Create multicast channels
         instance.addChannel(new MulticastChannel("MC", InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
-        instance.addChannel(new MulticastChannel("MDB", InetAddress.getByName(args[3]), Integer.parseInt(args[3])));
-        instance.addChannel(new MulticastChannel("MDR", InetAddress.getByName(args[5]), Integer.parseInt(args[4])));
+        instance.addChannel(new MulticastChannel("MDB", InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
+        instance.addChannel(new MulticastChannel("MDR", InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
     }
 
     /**
