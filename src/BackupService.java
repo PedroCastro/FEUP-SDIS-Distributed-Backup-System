@@ -13,6 +13,7 @@ public class BackupService {
 
     /**
      * Instance of the backup service
+     *
      * @return backup service instance
      */
     public static BackupService getInstance() {
@@ -21,10 +22,11 @@ public class BackupService {
 
     /**
      * Main method of the BackupService
+     *
      * @param args arguments sent to the console
      */
     public static void main(String[] args) throws IOException {
-        if(args.length < 7) {
+        if (args.length < 7) {
             System.out.println("Please execute the backup service using the following format:");
             System.out.println("java -jar BackupService <serverId> <mc_address> <mc_port> <mdb_address> <mdb_port> <mdr_address> <mdr_port>");
             return;
@@ -33,9 +35,9 @@ public class BackupService {
         instance = new BackupService(args[0]);
 
         // Create multicast channels
-        instance.addChannel(new MulticastChannel("MC", InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
-        instance.addChannel(new MulticastChannel("MDB", InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
-        instance.addChannel(new MulticastChannel("MDR", InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
+        instance.addChannel(new MulticastChannel(ChannelType.MC, InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
+        instance.addChannel(new MulticastChannel(ChannelType.MDB, InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
+        instance.addChannel(new MulticastChannel(ChannelType.MDR, InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
 
         // Start the service
         instance.startService();
@@ -64,6 +66,7 @@ public class BackupService {
 
     /**
      * Constructor of BackupService
+     *
      * @param serverId identification of the server instance
      */
     private BackupService(final String serverId) {
@@ -74,6 +77,7 @@ public class BackupService {
 
     /**
      * Get the server identification
+     *
      * @return server identification
      */
     public String getServerId() {
@@ -82,6 +86,7 @@ public class BackupService {
 
     /**
      * Add a multicast channel
+     *
      * @param channel channel to be added
      */
     public void addChannel(final MulticastChannel channel) {
@@ -90,6 +95,7 @@ public class BackupService {
 
     /**
      * Remove a multicast channel
+     *
      * @param channel channel to be removed
      */
     public void removeChannel(final MulticastChannel channel) {
@@ -97,13 +103,14 @@ public class BackupService {
     }
 
     /**
-     * Get a multicast channel by its name
-     * @param channelName name of the channel
-     * @return channel with that name
+     * Get a multicast channel by its type
+     *
+     * @param type type of the channel
+     * @return channel with that type
      */
-    public MulticastChannel getChannelByName(final String channelName) {
-        for(final MulticastChannel channel : multicastChannels.keySet())
-            if(channel.getName().equalsIgnoreCase(channelName))
+    public MulticastChannel getChannelByType(final ChannelType type) {
+        for (final MulticastChannel channel : multicastChannels.keySet())
+            if (channel.getType() == type)
                 return channel;
         return null;
     }
@@ -114,28 +121,36 @@ public class BackupService {
     public void startService() {
         isRunning.set(true);
 
-        // Create a thread per multicast channel
-        for(final MulticastChannel channel : new HashMap<>(multicastChannels).keySet()) {
-            final Thread channelThread = new Thread() {
-                @Override
-                public void run() {
-                    System.out.println(channel.getName() + " is listening.");
-
-                    byte[] data;
-                    while(isRunning.get()) {
-                        data = channel.read();
-                        if(data == null)
-                            continue;
-
-                        System.out.println("Received " + data.length + " bytes.");
-                    }
-                }
-            };
-            channelThread.start();
-            multicastChannels.put(channel, channelThread);
-        }
+        // Listen to all channels
+        listenChannel(getChannelByType(ChannelType.MC));
+        listenChannel(getChannelByType(ChannelType.MDB));
+        listenChannel(getChannelByType(ChannelType.MDR));
 
         System.out.println("Backup service is now running.");
+    }
+
+    /**
+     * Start listening the a multicast channel
+     * @param channel channel to listen to
+     */
+    private void listenChannel(MulticastChannel channel) {
+        final Thread mcChannelThread = new Thread() {
+            @Override
+            public void run() {
+                System.out.println(channel.getType() + " is listening.");
+
+                byte[] data;
+                while (isRunning.get()) {
+                    data = channel.read();
+                    if (data == null)
+                        continue;
+
+                    System.out.println("Received " + data.length + " bytes.");
+                }
+            }
+        };
+        mcChannelThread.start();
+        multicastChannels.put(channel, mcChannelThread);
     }
 
     /**
@@ -145,7 +160,7 @@ public class BackupService {
         isRunning.set(false);
 
         // Close all multicast channels
-        for(final Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
+        for (final Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
             // Wait for thread to finish
             try {
                 entry.getValue().join();
@@ -154,7 +169,7 @@ public class BackupService {
 
             // Close safely the channel
             final MulticastChannel channel = entry.getKey();
-            System.out.println(channel.getName() + " has been closed.");
+            System.out.println(channel.getType() + " has been closed.");
             channel.close();
         }
 
