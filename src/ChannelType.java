@@ -16,5 +16,5 @@ public enum ChannelType {
     /**
      * Multicast Data Restore Channel
      */
-    MDR;
+    MDR
 }
