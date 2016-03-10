@@ -50,17 +50,17 @@ public class BackupService {
     /**
      * Flag to tell if the service is running or not
      */
-    private AtomicBoolean isRunning;
+    private final AtomicBoolean isRunning;
 
     /**
      * Identification of the server
      */
-    private String serverId;
+    private final String serverId;
 
     /**
      * Map with all the multicast channels and correspondent thread
      */
-    private Map<MulticastChannel, Thread> multicastChannels;
+    private final Map<MulticastChannel, Thread> multicastChannels;
 
     /**
      * Constructor of BackupService
@@ -102,7 +102,7 @@ public class BackupService {
      * @return channel with that name
      */
     public MulticastChannel getChannelByName(final String channelName) {
-        for(MulticastChannel channel : multicastChannels.keySet())
+        for(final MulticastChannel channel : multicastChannels.keySet())
             if(channel.getName().equalsIgnoreCase(channelName))
                 return channel;
         return null;
@@ -115,8 +115,8 @@ public class BackupService {
         isRunning.set(true);
 
         // Create a thread per multicast channel
-        for(MulticastChannel channel : new HashMap<>(multicastChannels).keySet()) {
-            Thread channelThread = new Thread() {
+        for(final MulticastChannel channel : new HashMap<>(multicastChannels).keySet()) {
+            final Thread channelThread = new Thread() {
                 @Override
                 public void run() {
                     System.out.println(channel.getName() + " is listening.");
@@ -145,7 +145,7 @@ public class BackupService {
         isRunning.set(false);
 
         // Close all multicast channels
-        for(Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
+        for(final Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
             // Wait for thread to finish
             try {
                 entry.getValue().join();
@@ -153,7 +153,7 @@ public class BackupService {
             }
 
             // Close safely the channel
-            MulticastChannel channel = entry.getKey();
+            final MulticastChannel channel = entry.getKey();
             System.out.println(channel.getName() + " has been closed.");
             channel.close();
         }
