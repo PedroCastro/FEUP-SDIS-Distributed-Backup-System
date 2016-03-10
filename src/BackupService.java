@@ -1,7 +1,8 @@
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService {
 
@@ -35,7 +36,15 @@ public class BackupService {
         instance.addChannel(new MulticastChannel("MC", InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
         instance.addChannel(new MulticastChannel("MDB", InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
         instance.addChannel(new MulticastChannel("MDR", InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
+
+        // Start the service
+        instance.startService();
     }
+
+    /**
+     * Flag to tell if the service is running or not
+     */
+    private AtomicBoolean isRunning;
 
     /**
      * Identification of the server
@@ -43,17 +52,18 @@ public class BackupService {
     private String serverId;
 
     /**
-     * List with all the multicast channels
+     * Map with all the multicast channels and correspondent thread
      */
-    private List<MulticastChannel> multicastChannels;
+    private Map<MulticastChannel, Thread> multicastChannels;
 
     /**
      * Constructor of BackupService
      * @param serverId identification of the server instance
      */
     private BackupService(final String serverId) {
+        this.isRunning = new AtomicBoolean(false);
         this.serverId = serverId;
-        this.multicastChannels = new ArrayList<>();
+        this.multicastChannels = new HashMap<>();
     }
 
     /**
@@ -69,7 +79,7 @@ public class BackupService {
      * @param channel channel to be added
      */
     public void addChannel(final MulticastChannel channel) {
-        multicastChannels.add(channel);
+        multicastChannels.put(channel, null);
     }
 
     /**
@@ -86,9 +96,45 @@ public class BackupService {
      * @return channel with that name
      */
     public MulticastChannel getChannelByName(final String channelName) {
-        for(MulticastChannel channel : multicastChannels)
+        for(MulticastChannel channel : multicastChannels.keySet())
             if(channel.getName().equalsIgnoreCase(channelName))
                 return channel;
         return null;
+    }
+
+    /**
+     * Start the backup service
+     */
+    public void startService() {
+        isRunning.set(true);
+
+        // Create a thread per multicast channel
+        for(MulticastChannel channel : new HashMap<>(multicastChannels).keySet()) {
+            Thread channelThread = new Thread() {
+                @Override
+                public void run() {
+                    byte[] data;
+                    while(isRunning.get()) {
+                        data = channel.read();
+                        if(data == null)
+                            continue;
+
+                        System.out.println("Received " + data.length + " bytes.");
+                    }
+                }
+            };
+            channelThread.start();
+            multicastChannels.put(channel, channelThread);
+        }
+    }
+
+    /**
+     * Stop the backup service
+     */
+    public void stopService() {
+        isRunning.set(false);
+
+        // Close all multicast channels
+        multicastChannels.keySet().forEach(MulticastChannel::close);
     }
 }
