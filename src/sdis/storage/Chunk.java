@@ -1,4 +1,4 @@
-package storage;
+package sdis.storage;
 
 /**
  * Chunk Object

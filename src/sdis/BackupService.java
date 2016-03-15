@@ -1,13 +1,26 @@
-import network.ChannelType;
-import network.MulticastChannel;
+package sdis;
 
-import java.io.IOException;
+import sdis.network.ChannelType;
+import sdis.network.MulticastChannel;
+import sdis.storage.Disk;
+
+import java.io.*;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService {
+
+    /**
+     * Default capacity of the disk
+     */
+    private final static int DEFAULT_DISK_CAPACITY = 100000;
+
+    /**
+     * File name of the disk
+     */
+    private final static String DISK_FILENAME = "disk.io";
 
     /**
      * Instance of the backup service
@@ -24,7 +37,7 @@ public class BackupService {
     }
 
     /**
-     * Main method of the BackupService
+     * Main method of the sdis.BackupService
      *
      * @param args arguments sent to the console
      */
@@ -63,12 +76,17 @@ public class BackupService {
     private final String serverId;
 
     /**
+     * Disk of the backup service
+     */
+    private final Disk disk;
+
+    /**
      * Map with all the multicast channels and correspondent thread
      */
     private final Map<MulticastChannel, Thread> multicastChannels;
 
     /**
-     * Constructor of BackupService
+     * Constructor of sdis.BackupService
      *
      * @param serverId identification of the server instance
      */
@@ -76,6 +94,7 @@ public class BackupService {
         this.isRunning = new AtomicBoolean(false);
         this.serverId = serverId;
         this.multicastChannels = new HashMap<>();
+        this.disk = loadDisk(); saveDisk();
     }
 
     /**
@@ -85,6 +104,49 @@ public class BackupService {
      */
     public String getServerId() {
         return serverId;
+    }
+
+    /**
+     * Get the disk of the backup service
+     *
+     * @return disk of the backup service
+     */
+    public Disk getDisk() {
+        return disk;
+    }
+
+    /**
+     * Load the disk
+     *
+     * @return loaded disk
+     */
+    public Disk loadDisk() {
+        final File diskFile = new File(DISK_FILENAME);
+
+        // Disk already exists
+        if (diskFile.exists() && !diskFile.isDirectory()) {
+            try {
+                return (Disk) new ObjectInputStream(new FileInputStream(diskFile)).readObject();
+            } catch (ClassNotFoundException | IOException e) {
+                System.out.println("Failed to load the disk! " + e.getMessage());
+                return null;
+            }
+        }
+        // Disk does not exist
+        else {
+            return new Disk(DEFAULT_DISK_CAPACITY);
+        }
+    }
+
+    /**
+     * Save the disk to the HDD
+     */
+    public void saveDisk() {
+        try {
+            new ObjectOutputStream(new FileOutputStream(DISK_FILENAME)).writeObject(disk);
+        } catch (IOException e) {
+            System.out.println("Failed to save the disk! " + e.getMessage());
+        }
     }
 
     /**
@@ -134,6 +196,7 @@ public class BackupService {
 
     /**
      * Start listening the a multicast channel
+     *
      * @param channel channel to listen to
      */
     private void listenChannel(final MulticastChannel channel) {

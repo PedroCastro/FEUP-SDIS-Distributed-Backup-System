@@ -1,4 +1,4 @@
-package network;
+package sdis.network;
 
 /**
  * Multicast Channel Type
