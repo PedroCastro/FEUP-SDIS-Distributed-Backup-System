@@ -2,7 +2,7 @@ package sdis.storage;
 
 import sdis.BackupService;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -107,7 +107,17 @@ public class Disk implements Serializable {
             return false;
         }
 
-        // TODO Save chunk in the disk
+        // Save chunk in the disk
+        try {
+            File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
+            BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
+            chunkFileOutputStream.write(chunk.getData());
+            chunkFileOutputStream.flush();
+            chunkFileOutputStream.close();
+        } catch (IOException e) {
+            System.out.println("Failed to save chunk to the disk! " + e.getMessage());
+            return false;
+        }
 
         // Added used space
         usedBytes += chunk.getData().length;
@@ -132,9 +142,16 @@ public class Disk implements Serializable {
      * @return true if successfull, false otherwise
      */
     public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
-        // TODO get chunk from the disk
-        final Chunk chunk = new Chunk(null, 0, null);
-        return removeChunk(chunk);
+        // Get chunk from the disk
+        File chunkFile = new File("data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
+        byte[] data = new byte[(int) chunkFile.length()];
+        try {
+            new FileInputStream(chunkFile).read(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return removeChunk(new Chunk(fileHash, chunkNumber, data));
     }
 
     /**
@@ -154,7 +171,10 @@ public class Disk implements Serializable {
         if (!files.containsKey(chunk.getFileID()))
             return false;
 
-        // TODO Remove chunk in the disk
+        // Remove chunk in the disk
+        File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
+        if(!chunkFile.delete())
+            return false;
 
         // Add free space
         usedBytes -= chunk.getData().length;
