@@ -15,7 +15,7 @@ public class BackupService {
     /**
      * Default capacity of the disk
      */
-    private final static int DEFAULT_DISK_CAPACITY = 100000;
+    private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
 
     /**
      * File name of the disk
@@ -95,6 +95,9 @@ public class BackupService {
         this.serverId = serverId;
         this.multicastChannels = new HashMap<>();
         this.disk = loadDisk(); saveDisk();
+
+        // Print disk information
+        System.out.println("Disk - f:" + disk.getFreeBytes() + "b / u:" + disk.getUsedBytes() + "b / c:" + disk.getCapacity() + "b");
     }
 
     /**
