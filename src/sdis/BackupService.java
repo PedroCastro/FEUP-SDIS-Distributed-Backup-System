@@ -20,7 +20,7 @@ public class BackupService {
     /**
      * File name of the disk
      */
-    private final static String DISK_FILENAME = "disk.io";
+    private final static String DISK_FILENAME = "disk.iso";
 
     /**
      * Instance of the backup service
