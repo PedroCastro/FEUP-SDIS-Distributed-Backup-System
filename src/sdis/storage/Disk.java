@@ -96,6 +96,38 @@ public class Disk implements Serializable {
     }
 
     /**
+     * Get a chunk from the disk
+     * @param fileHash file hash of the chunk
+     * @param chunkNumber chunk number
+     * @return chunk with that file hash and chunk number
+     */
+    public synchronized Chunk getChunk(String fileHash, int chunkNumber) {
+        File chunkFile = new File("data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
+        byte[] data = new byte[(int) chunkFile.length()];
+        try {
+            new FileInputStream(chunkFile).read(data);
+        } catch (Exception e) {
+            System.out.println("Error while fetching chunk from the disk! " + e.getMessage());
+            return null;
+        }
+
+        return new Chunk(fileHash, chunkNumber, data);
+    }
+
+    /**
+     * Check if a chunk is on the disk
+     *
+     * @param fileHash    hash of the file to check
+     * @param chunkNumber number of the chunk to check
+     * @return true if chunk file exists, false otherwise
+     */
+    public synchronized boolean hasChunk(final String fileHash, final int chunkNumber) {
+        if (!files.containsKey(fileHash))
+            return false;
+        return files.get(fileHash).contains(chunkNumber);
+    }
+
+    /**
      * Save a chunk to the disk
      *
      * @param chunk to be added
@@ -142,16 +174,7 @@ public class Disk implements Serializable {
      * @return true if successfull, false otherwise
      */
     public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
-        // Get chunk from the disk
-        File chunkFile = new File("data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
-        byte[] data = new byte[(int) chunkFile.length()];
-        try {
-            new FileInputStream(chunkFile).read(data);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return removeChunk(new Chunk(fileHash, chunkNumber, data));
+        return removeChunk(getChunk(fileHash, chunkNumber));
     }
 
     /**
@@ -168,12 +191,12 @@ public class Disk implements Serializable {
         }
 
         // Check if chunk exists
-        if (!files.containsKey(chunk.getFileID()))
+        if (!hasChunk(chunk.getFileID(), chunk.getChunkNo()))
             return false;
 
         // Remove chunk in the disk
         File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
-        if(!chunkFile.delete())
+        if (!chunkFile.delete())
             return false;
 
         // Add free space
@@ -186,18 +209,5 @@ public class Disk implements Serializable {
         BackupService.getInstance().saveDisk();
 
         return true;
-    }
-
-    /**
-     * Check if a chunk is on the disk
-     *
-     * @param fileHash    hash of the file to check
-     * @param chunkNumber number of the chunk to check
-     * @return true if chunk file exists, false otherwise
-     */
-    public synchronized boolean hasChunk(final String fileHash, final int chunkNumber) {
-        if (!files.containsKey(fileHash))
-            return false;
-        return files.get(fileHash).contains(chunkNumber);
     }
 }
