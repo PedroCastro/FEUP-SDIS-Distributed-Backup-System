@@ -1,4 +1,4 @@
-package network;
+package sdis.network;
 
 import java.io.IOException;
 import java.net.DatagramPacket;

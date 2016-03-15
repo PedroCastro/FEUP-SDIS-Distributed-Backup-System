@@ -1,4 +1,4 @@
-package storage;
+package sdis.storage;
 
 import java.io.*;
 import java.security.MessageDigest;

@@ -1,4 +1,6 @@
-package storage;
+package sdis.storage;
+
+import sdis.BackupService;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -71,25 +73,34 @@ public class Disk implements Serializable {
 
     /**
      * Add capacity to the disk
+     *
      * @param bytes number of bytes to be added to capacity
      */
-    public synchronized void addCapacity(int bytes) {
+    public synchronized void addCapacity(final int bytes) {
         capacityBytes += bytes;
+
+        // Save the disk
+        BackupService.getInstance().saveDisk();
     }
 
     /**
      * Set the capacity of the disk
+     *
      * @param bytes number of bytes of the capacity
      */
-    public synchronized void setCapacity(int bytes) {
+    public synchronized void setCapacity(final int bytes) {
         capacityBytes = bytes;
+
+        // Save the disk
+        BackupService.getInstance().saveDisk();
     }
 
     /**
      * Save a chunk to the disk
+     *
      * @param chunk to be added
      */
-    public synchronized boolean saveChunk(Chunk chunk) {
+    public synchronized boolean saveChunk(final Chunk chunk) {
         // Check free space
         if (chunk.getData().length > getFreeBytes()) {
             System.out.println("Not enough space in disk!");
@@ -102,31 +113,37 @@ public class Disk implements Serializable {
         usedBytes += chunk.getData().length;
 
         // Save in chunk's map
-        if(!files.containsKey(chunk.getFileID()))
+        if (!files.containsKey(chunk.getFileID()))
             files.put(chunk.getFileID(), new HashSet<>());
 
         files.get(chunk.getFileID()).add(chunk.getChunkNo());
+
+        // Save the disk
+        BackupService.getInstance().saveDisk();
+
         return true;
     }
 
     /**
      * Remove a chunk from the disk
-     * @param fileHash file hash of the chunk
+     *
+     * @param fileHash    file hash of the chunk
      * @param chunkNumber chunk number to be removed
      * @return true if successfull, false otherwise
      */
-    public synchronized boolean removeChunk(String fileHash, int chunkNumber) {
+    public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
         // TODO get chunk from the disk
-        Chunk chunk = new Chunk(null, 0, null);
+        final Chunk chunk = new Chunk(null, 0, null);
         return removeChunk(chunk);
     }
 
     /**
      * Remove a chunk from the disk
+     *
      * @param chunk chunk to be removed
      * @return true if chunk was removed, false otherwise
      */
-    public synchronized boolean removeChunk(Chunk chunk) {
+    public synchronized boolean removeChunk(final Chunk chunk) {
         // Check disk space
         if (chunk.getData().length > getUsedBytes()) {
             System.out.println("Removing more bytes than the ones being used!");
@@ -134,7 +151,7 @@ public class Disk implements Serializable {
         }
 
         // Check if chunk exists
-        if(!files.containsKey(chunk.getFileID()))
+        if (!files.containsKey(chunk.getFileID()))
             return false;
 
         // TODO Remove chunk in the disk
@@ -144,17 +161,22 @@ public class Disk implements Serializable {
 
         // Remove in chunk's map
         files.get(chunk.getFileID()).remove(chunk.getChunkNo());
+
+        // Save the disk
+        BackupService.getInstance().saveDisk();
+
         return true;
     }
 
     /**
      * Check if a chunk is on the disk
-     * @param fileHash hash of the file to check
+     *
+     * @param fileHash    hash of the file to check
      * @param chunkNumber number of the chunk to check
      * @return true if chunk file exists, false otherwise
      */
-    public synchronized boolean hasChunk(String fileHash, int chunkNumber) {
-        if(!files.containsKey(fileHash))
+    public synchronized boolean hasChunk(final String fileHash, final int chunkNumber) {
+        if (!files.containsKey(fileHash))
             return false;
         return files.get(fileHash).contains(chunkNumber);
     }
