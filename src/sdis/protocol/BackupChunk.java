@@ -45,6 +45,9 @@ public class BackupChunk implements Runnable {
         byte[] message = getMessage();
 
         while(!finished) {
+            // Listen for stored confirmations
+            BackupService.getInstance().getChannelsHandler().listenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
+
             // Send backup chunk message
             BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDB);
 
@@ -57,7 +60,7 @@ public class BackupChunk implements Runnable {
             }
 
             // Check number confirmations
-            int numberConfirmations = 0;
+            int numberConfirmations = BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
             if(numberConfirmations < chunk.getState().getMinReplicationDegree()) {
                 currentAttempt++;
 
@@ -72,6 +75,9 @@ public class BackupChunk implements Runnable {
                 System.out.println("Chunk got the minimum replication degree desired!");
                 finished = true;
             }
+
+            // Stop listen to stored confirmations
+            BackupService.getInstance().getChannelsHandler().stopListenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
         }
     }
 
