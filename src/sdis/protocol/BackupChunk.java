@@ -1,6 +1,7 @@
 package sdis.protocol;
 
 import sdis.BackupService;
+import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
@@ -8,6 +9,16 @@ import sdis.utils.Utilities;
  * Backup chunk protocol
  */
 public class BackupChunk implements Runnable {
+
+    /**
+     * Initial waiting time for responses in millis
+     */
+    private static final int INITIAL_WAITING_TIME = 1000;
+
+    /**
+     * Maximum number of attempts to backup the chunk
+     */
+    private static final int MAX_ATTEMPTS = 5;
 
     /**
      * Chunk to be backed up
@@ -27,7 +38,41 @@ public class BackupChunk implements Runnable {
      */
     @Override
     public void run() {
+        int currentWaitingTime = INITIAL_WAITING_TIME;
+        int currentAttempt = 1;
+        boolean finished = false;
+
         byte[] message = getMessage();
+
+        while(!finished) {
+            // Send backup chunk message
+            BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDB);
+
+            // Wait confirmations
+            try {
+                System.out.println("Waiting for stored chunk confirmations...");
+                Thread.sleep(currentWaitingTime);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Check number confirmations
+            int numberConfirmations = 0;
+            if(numberConfirmations < chunk.getState().getMinReplicationDegree()) {
+                currentAttempt++;
+
+                if(currentAttempt > MAX_ATTEMPTS) {
+                    System.out.println("Could not get the minimum replication degree for the chunk!");
+                    finished = true;
+                } else {
+                    System.out.println("Chunk haven't got the desired replication degree, trying again!");
+                    currentWaitingTime *= 2;
+                }
+            } else {
+                System.out.println("Chunk got the minimum replication degree desired!");
+                finished = true;
+            }
+        }
     }
 
     /**
