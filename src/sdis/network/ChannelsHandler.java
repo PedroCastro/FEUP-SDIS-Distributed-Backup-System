@@ -146,6 +146,9 @@ public class ChannelsHandler {
         if (header == null || header.length <= 0)
             return;
 
+        if(Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
+            return;
+
         if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.STORED_MESSAGE:
