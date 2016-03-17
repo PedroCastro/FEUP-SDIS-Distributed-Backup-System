@@ -2,6 +2,8 @@ package sdis.network;
 
 import sdis.BackupService;
 import sdis.protocol.BackupProtocol;
+import sdis.storage.Chunk;
+import sdis.utils.Utilities;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -121,30 +123,33 @@ public class ChannelsHandler {
 
     /**
      * Send a message to a channel
+     *
      * @param message message to be sent
      * @param channel channel of the message to be sent
      * @return true if message was sent, false otherwise
      */
     public boolean sendMessage(final byte[] message, ChannelType channel) {
         MulticastChannel messageChannel = getChannelByType(channel);
-        if(channel == null)
+        if (channel == null)
             return false;
         return messageChannel.write(message);
     }
 
     /**
      * Handle a received message
+     *
      * @param message message that was received
      * @param channel channel that got the message
      */
     private void handleMessage(final byte[] message, ChannelType channel) {
-        String[] header = extractHeader(message);
-        if(header == null || header.length <= 0)
+        String[] header = Utilities.extractHeader(message);
+        if (header == null || header.length <= 0)
             return;
 
-        if(channel == ChannelType.MC) {
+        if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.STORED_MESSAGE:
+                    handleStoredChunk(header[BackupProtocol.FILE_ID_INDEX], Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
                     break;
             }
         } else if (channel == ChannelType.MDB) {
@@ -155,60 +160,67 @@ public class ChannelsHandler {
     }
 
     /**
-     * Extract the header of a message
-     * @param message message to be extract the header
-     * @return extracted header
+     * Handle the stored chunk
+     * @param fileId file id of the chunk
+     * @param chunkNumber number of the chunk
      */
-    private String[] extractHeader(final byte[] message) {
-        ByteArrayInputStream stream = new ByteArrayInputStream(message);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+    private void handleStoredChunk(final String fileId, final int chunkNumber) {
+        // Add stored confirmation in case it is listening to confirmations
+        addStoredConfirmation(fileId, chunkNumber);
 
-        try {
-            return reader.readLine().split(" ");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        // Update replication degree if that is the case
+        Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
+        if(chunk != null) {
+            chunk.getState().increaseReplicas();
+            BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
     }
 
     /**
-     * Extract the body of a message
-     * @param message message to get its body extracted
-     * @return extracted body
+     * Get the number of stored confirmations
+     *
+     * @param fileId      file id to get those
+     * @param chunkNumber chunk number to get those
+     * @return number of confirmations for the given chunk
      */
-    private byte[] extractBody(final byte[] message) {
-        ByteArrayInputStream stream = new ByteArrayInputStream(message);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+    public int getStoredConfirmations(final String fileId, final int chunkNumber) {
+        if (!replicas.containsKey(fileId))
+            return -1;
 
-        String line = null;
-        int headerLinesLengthSum = 0;
-        int numLines = 0;
+        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        if (!fileReplicasCount.containsKey(chunkNumber))
+            return -1;
 
-        do {
-            try {
-                line = reader.readLine();
+        return fileReplicasCount.get(chunkNumber);
+    }
 
-                headerLinesLengthSum += line.length();
+    /**
+     * Add a stored chunk confirmation
+     *
+     * @param fileId      file id to add the confirmation
+     * @param chunkNumber chunk number to add the confirmation
+     */
+    private void addStoredConfirmation(final String fileId, final int chunkNumber) {
+        if (!replicas.containsKey(fileId))
+            return;
 
-                numLines++;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } while (line != null && !line.isEmpty());
+        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        if(!fileReplicasCount.containsKey(chunkNumber))
+            return;
 
-        int bodyStartIndex = headerLinesLengthSum + numLines * BackupProtocol.CRLF.getBytes().length;
-
-        return Arrays.copyOfRange(message, bodyStartIndex, message.length);
+        fileReplicasCount.put(chunkNumber, fileReplicasCount.get(chunkNumber) + 1);
+        replicas.put(fileId, fileReplicasCount);
     }
 
     /**
      * Listen to stored chunk confirmations
-     * @param fileId file id to listen to those
+     *
+     * @param fileId      file id to listen to those
      * @param chunkNumber chunk number to listen to those
      */
     public void listenStoredConfirmations(final String fileId, final int chunkNumber) {
         Map<Integer, Integer> fileReplicasCount;
-        if(replicas.containsKey(fileId))
+        if (replicas.containsKey(fileId))
             fileReplicasCount = replicas.get(fileId);
         else
             fileReplicasCount = new HashMap<>();
@@ -219,36 +231,20 @@ public class ChannelsHandler {
 
     /**
      * Stop listen to stored chunk confirmations
-     * @param fileId file id to listen to those
+     *
+     * @param fileId      file id to listen to those
      * @param chunkNumber chunk number to listen to those
      */
     public void stopListenStoredConfirmations(final String fileId, final int chunkNumber) {
-        if(!replicas.containsKey(fileId))
+        if (!replicas.containsKey(fileId))
             return;
 
         Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
         fileReplicasCount.remove(chunkNumber);
 
-        if(fileReplicasCount.size() == 0)
+        if (fileReplicasCount.size() == 0)
             replicas.remove(fileId);
         else
             replicas.put(fileId, fileReplicasCount);
-    }
-
-    /**
-     * Get the number of stored confirmations
-     * @param fileId file id to get those
-     * @param chunkNumber chunk number to get those
-     * @return number of confirmations for the given chunk
-     */
-    public int getStoredConfirmations(final String fileId, final int chunkNumber) {
-        if(!replicas.containsKey(fileId))
-            return -1;
-
-        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
-        if(!fileReplicasCount.containsKey(chunkNumber))
-            return -1;
-
-        return fileReplicasCount.get(chunkNumber);
     }
 }
