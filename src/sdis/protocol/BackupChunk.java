@@ -92,8 +92,8 @@ public class BackupChunk implements Runnable {
                 + chunk.getFileID() + " "
                 + chunk.getChunkNo() + " "
                 + chunk.getState().getMinReplicationDegree()
-                + BackupService.CLRF
-                + BackupService.CLRF;
+                + BackupService.CRLF
+                + BackupService.CRLF;
         return Utilities.concatBytes(header.getBytes(), chunk.getData());
     }
 }

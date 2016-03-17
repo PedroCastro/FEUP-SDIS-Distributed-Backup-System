@@ -2,6 +2,11 @@ package sdis.network;
 
 import sdis.BackupService;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -124,6 +129,69 @@ public class ChannelsHandler {
         if(channel == null)
             return false;
         return messageChannel.write(message);
+    }
+
+    /**
+     * Handle a received message
+     * @param message message that was received
+     * @param channel channel that got the message
+     */
+    private void handleMessage(final byte[] message, ChannelType channel) {
+        String[] header = extractHeader(message);
+        if(channel == ChannelType.MC) {
+
+        } else if (channel == ChannelType.MDB) {
+
+        } else if (channel == ChannelType.MDR) {
+
+        }
+    }
+
+    /**
+     * Extract the header of a message
+     * @param message message to be extract the header
+     * @return extracted header
+     */
+    private String[] extractHeader(final byte[] message) {
+        ByteArrayInputStream stream = new ByteArrayInputStream(message);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+
+        try {
+            return reader.readLine().split(" ");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Extract the body of a message
+     * @param message message to get its body extracted
+     * @return extracted body
+     */
+    private byte[] extractBody(final byte[] message) {
+        ByteArrayInputStream stream = new ByteArrayInputStream(message);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+
+        String line = null;
+        int headerLinesLengthSum = 0;
+        int numLines = 0;
+
+        do {
+            try {
+                line = reader.readLine();
+
+                headerLinesLengthSum += line.length();
+
+                numLines++;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } while (line != null && !line.isEmpty());
+
+        int bodyStartIndex = headerLinesLengthSum + numLines * BackupService.CRLF.getBytes().length;
+
+        return Arrays.copyOfRange(message, bodyStartIndex, message.length);
     }
 
     /**
