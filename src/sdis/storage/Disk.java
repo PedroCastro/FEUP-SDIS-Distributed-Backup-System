@@ -4,9 +4,7 @@ import sdis.BackupService;
 
 import java.io.*;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Disk
@@ -29,9 +27,9 @@ public class Disk implements Serializable {
     private int usedBytes;
 
     /**
-     * List with all files and chunks saved
+     * Map with all files and chunks saved as well as their state
      */
-    private Map<String, Set<Integer>> files;
+    private Map<String, Map<Integer, ChunkState>> files;
 
     /**
      * Constructor of Disk
@@ -102,6 +100,13 @@ public class Disk implements Serializable {
      * @return chunk with that file hash and chunk number
      */
     public synchronized Chunk getChunk(String fileHash, int chunkNumber) {
+        if(!hasChunk(fileHash, chunkNumber))
+            return null;
+
+        // Chunk state
+        ChunkState state = files.get(fileHash).get(chunkNumber);
+
+        // Get chunk from the disk
         File chunkFile = new File("data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
         byte[] data = new byte[(int) chunkFile.length()];
         try {
@@ -111,7 +116,7 @@ public class Disk implements Serializable {
             return null;
         }
 
-        return new Chunk(fileHash, chunkNumber, data);
+        return new Chunk(fileHash, chunkNumber, data, 0);
     }
 
     /**
@@ -124,7 +129,7 @@ public class Disk implements Serializable {
     public synchronized boolean hasChunk(final String fileHash, final int chunkNumber) {
         if (!files.containsKey(fileHash))
             return false;
-        return files.get(fileHash).contains(chunkNumber);
+        return files.get(fileHash).containsKey(chunkNumber);
     }
 
     /**
@@ -156,9 +161,9 @@ public class Disk implements Serializable {
 
         // Save in chunk's map
         if (!files.containsKey(chunk.getFileID()))
-            files.put(chunk.getFileID(), new HashSet<>());
+            files.put(chunk.getFileID(), new HashMap<>());
 
-        files.get(chunk.getFileID()).add(chunk.getChunkNo());
+        files.get(chunk.getFileID()).put(chunk.getChunkNo(), chunk.getState());
 
         // Save the disk
         BackupService.getInstance().saveDisk();
