@@ -1,6 +1,7 @@
 package sdis.network;
 
 import sdis.BackupService;
+import sdis.protocol.BackupProtocol;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -138,8 +139,14 @@ public class ChannelsHandler {
      */
     private void handleMessage(final byte[] message, ChannelType channel) {
         String[] header = extractHeader(message);
-        if(channel == ChannelType.MC) {
+        if(header == null || header.length <= 0)
+            return;
 
+        if(channel == ChannelType.MC) {
+            switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
+                case BackupProtocol.STORED_MESSAGE:
+                    break;
+            }
         } else if (channel == ChannelType.MDB) {
 
         } else if (channel == ChannelType.MDR) {
@@ -189,7 +196,7 @@ public class ChannelsHandler {
             }
         } while (line != null && !line.isEmpty());
 
-        int bodyStartIndex = headerLinesLengthSum + numLines * BackupService.CRLF.getBytes().length;
+        int bodyStartIndex = headerLinesLengthSum + numLines * BackupProtocol.CRLF.getBytes().length;
 
         return Arrays.copyOfRange(message, bodyStartIndex, message.length);
     }

@@ -12,16 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BackupService {
 
     /**
-     * Version of the protocol
-     */
-    public final static int VERSION = 1;
-
-    /**
-     * End character
-     */
-    public final static String CRLF = "\n\r";
-
-    /**
      * Default capacity of the disk
      */
     private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
