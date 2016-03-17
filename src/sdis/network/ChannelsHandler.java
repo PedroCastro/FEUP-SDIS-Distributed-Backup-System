@@ -16,10 +16,16 @@ public class ChannelsHandler {
     private final Map<MulticastChannel, Thread> multicastChannels;
 
     /**
+     * Map to track the replicas of the chunks of a file being sent
+     */
+    private final Map<String, Map<Integer, Integer>> replicas;
+
+    /**
      * Constructor of ChannelsHandler
      */
     public ChannelsHandler() {
         this.multicastChannels = new HashMap<>();
+        this.replicas = new HashMap<>();
     }
 
     /**
@@ -110,13 +116,64 @@ public class ChannelsHandler {
     /**
      * Send a message to a channel
      * @param message message to be sent
-     * @param type type of the message to be sent
+     * @param channel channel of the message to be sent
      * @return true if message was sent, false otherwise
      */
-    public boolean sendMessage(final byte[] message, ChannelType type) {
-        MulticastChannel channel = getChannelByType(type);
+    public boolean sendMessage(final byte[] message, ChannelType channel) {
+        MulticastChannel messageChannel = getChannelByType(channel);
         if(channel == null)
             return false;
-        return channel.write(message);
+        return messageChannel.write(message);
+    }
+
+    /**
+     * Listen to stored chunk confirmations
+     * @param fileId file id to listen to those
+     * @param chunkNumber chunk number to listen to those
+     */
+    public void listenStoredConfirmations(final String fileId, final int chunkNumber) {
+        Map<Integer, Integer> fileReplicasCount;
+        if(replicas.containsKey(fileId))
+            fileReplicasCount = replicas.get(fileId);
+        else
+            fileReplicasCount = new HashMap<>();
+
+        fileReplicasCount.put(chunkNumber, 0);
+        replicas.put(fileId, fileReplicasCount);
+    }
+
+    /**
+     * Stop listen to stored chunk confirmations
+     * @param fileId file id to listen to those
+     * @param chunkNumber chunk number to listen to those
+     */
+    public void stopListenStoredConfirmations(final String fileId, final int chunkNumber) {
+        if(!replicas.containsKey(fileId))
+            return;
+
+        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        fileReplicasCount.remove(chunkNumber);
+
+        if(fileReplicasCount.size() == 0)
+            replicas.remove(fileId);
+        else
+            replicas.put(fileId, fileReplicasCount);
+    }
+
+    /**
+     * Get the number of stored confirmations
+     * @param fileId file id to get those
+     * @param chunkNumber chunk number to get those
+     * @return number of confirmations for the given chunk
+     */
+    public int getStoredConfirmations(final String fileId, final int chunkNumber) {
+        if(!replicas.containsKey(fileId))
+            return -1;
+
+        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        if(!fileReplicasCount.containsKey(chunkNumber))
+            return -1;
+
+        return fileReplicasCount.get(chunkNumber);
     }
 }
