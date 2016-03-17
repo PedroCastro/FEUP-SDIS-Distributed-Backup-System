@@ -116,7 +116,7 @@ public class Disk implements Serializable {
             return null;
         }
 
-        return new Chunk(fileHash, chunkNumber, data, 0);
+        return new Chunk(fileHash, chunkNumber, data, state);
     }
 
     /**
@@ -138,6 +138,9 @@ public class Disk implements Serializable {
      * @param chunk to be added
      */
     public synchronized boolean saveChunk(final Chunk chunk) {
+        if(chunk == null)
+            return false;
+
         // Check free space
         if (chunk.getData().length > getFreeBytes()) {
             System.out.println("Not enough space in disk!");
@@ -189,6 +192,9 @@ public class Disk implements Serializable {
      * @return true if chunk was removed, false otherwise
      */
     public synchronized boolean removeChunk(final Chunk chunk) {
+        if(chunk == null)
+            return false;
+
         // Check disk space
         if (chunk.getData().length > getUsedBytes()) {
             System.out.println("Removing more bytes than the ones being used!");
@@ -214,5 +220,13 @@ public class Disk implements Serializable {
         BackupService.getInstance().saveDisk();
 
         return true;
+    }
+
+    /**
+     * Update the state of a chunk
+     * @param chunk chunk to be updated
+     */
+    public synchronized void updateChunkState(final Chunk chunk) {
+        files.get(chunk.getFileID()).put(chunk.getChunkNo(), chunk.getState());
     }
 }

@@ -36,7 +36,7 @@ public class FileChunker {
         //TODO ultimo chunk tem que ter tamanho 0 se o file tiver tamanho certo
 
         while ((inputStream.read(chunk)) > 0) {
-            Chunk newChunk = new Chunk(id, part++, chunk);
+            Chunk newChunk = new Chunk(id, part++, chunk, 0);
             chunkList.add(newChunk);
         }
 

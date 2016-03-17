@@ -137,6 +137,7 @@ public class BackupService {
         }
         // Disk does not exist
         else {
+            System.out.println("Starting an empty disk with capacity of " + DEFAULT_DISK_CAPACITY + " bytes!");
             return new Disk(DEFAULT_DISK_CAPACITY);
         }
     }
