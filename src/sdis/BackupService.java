@@ -1,6 +1,7 @@
 package sdis;
 
 import sdis.network.ChannelType;
+import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
 import sdis.storage.Disk;
 
@@ -61,9 +62,9 @@ public class BackupService {
         instance = new BackupService(args[0]);
 
         // Create multicast channels
-        instance.addChannel(new MulticastChannel(ChannelType.MC, InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
-        instance.addChannel(new MulticastChannel(ChannelType.MDB, InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
-        instance.addChannel(new MulticastChannel(ChannelType.MDR, InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
+        instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MC, InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
+        instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MDB, InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
+        instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MDR, InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
 
         // Start the service
         instance.startService();
@@ -78,7 +79,7 @@ public class BackupService {
     /**
      * Flag to tell if the service is running or not
      */
-    private final AtomicBoolean isRunning;
+    public final AtomicBoolean isRunning;
 
     /**
      * Identification of the server
@@ -91,9 +92,9 @@ public class BackupService {
     private final Disk disk;
 
     /**
-     * Map with all the multicast channels and correspondent thread
+     * Channels handler
      */
-    private final Map<MulticastChannel, Thread> multicastChannels;
+    private final ChannelsHandler channelsHandler;
 
     /**
      * Constructor of sdis.BackupService
@@ -103,8 +104,8 @@ public class BackupService {
     private BackupService(final String serverId) {
         this.isRunning = new AtomicBoolean(false);
         this.serverId = serverId;
-        this.multicastChannels = new HashMap<>();
         this.disk = loadDisk(); saveDisk();
+        this.channelsHandler = new ChannelsHandler();
 
         // Print disk information
         System.out.println("Disk - f:" + disk.getFreeBytes() + "b / u:" + disk.getUsedBytes() + "b / c:" + disk.getCapacity() + "b");
@@ -126,6 +127,14 @@ public class BackupService {
      */
     public Disk getDisk() {
         return disk;
+    }
+
+    /**
+     * Get the channels handler
+     * @return channels handler
+     */
+    public ChannelsHandler getChannelsHandler() {
+        return channelsHandler;
     }
 
     /**
@@ -164,86 +173,14 @@ public class BackupService {
     }
 
     /**
-     * Add a multicast channel
-     *
-     * @param channel channel to be added
-     */
-    public void addChannel(final MulticastChannel channel) {
-        multicastChannels.put(channel, null);
-    }
-
-    /**
-     * Remove a multicast channel
-     *
-     * @param channel channel to be removed
-     */
-    public void removeChannel(final MulticastChannel channel) {
-        multicastChannels.remove(channel);
-    }
-
-    /**
-     * Get a multicast channel by its type
-     *
-     * @param type type of the channel
-     * @return channel with that type
-     */
-    public MulticastChannel getChannelByType(final ChannelType type) {
-        for (final MulticastChannel channel : multicastChannels.keySet())
-            if (channel.getType() == type)
-                return channel;
-        return null;
-    }
-
-    /**
      * Start the backup service
      */
     public void startService() {
         isRunning.set(true);
 
-        // Listen to all channels
-        listenChannel(getChannelByType(ChannelType.MC));
-        listenChannel(getChannelByType(ChannelType.MDB));
-        listenChannel(getChannelByType(ChannelType.MDR));
+        channelsHandler.start();
 
         System.out.println("Backup service is now running.");
-    }
-
-    /**
-     * Start listening the a multicast channel
-     *
-     * @param channel channel to listen to
-     */
-    private void listenChannel(final MulticastChannel channel) {
-        final Thread mcChannelThread = new Thread() {
-            @Override
-            public void run() {
-                System.out.println(channel.getType() + " is listening.");
-
-                byte[] data;
-                while (isRunning.get()) {
-                    data = channel.read();
-                    if (data == null)
-                        continue;
-
-                    System.out.println("Received " + data.length + " bytes.");
-                }
-            }
-        };
-        mcChannelThread.start();
-        multicastChannels.put(channel, mcChannelThread);
-    }
-
-    /**
-     * Send a message to a channel
-     * @param message message to be sent
-     * @param type type of the message to be sent
-     * @return true if message was sent, false otherwise
-     */
-    public boolean sendMessage(final byte[] message, ChannelType type) {
-        MulticastChannel channel = getChannelByType(type);
-        if(channel == null)
-            return false;
-        return channel.write(message);
     }
 
     /**
@@ -252,19 +189,7 @@ public class BackupService {
     public void stopService() {
         isRunning.set(false);
 
-        // Close all multicast channels
-        for (final Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
-            // Wait for thread to finish
-            try {
-                entry.getValue().join();
-            } catch (InterruptedException ignored) {
-            }
-
-            // Close safely the channel
-            final MulticastChannel channel = entry.getKey();
-            System.out.println(channel.getType() + " has been closed.");
-            channel.close();
-        }
+        channelsHandler.stop();
 
         System.out.println("Backup service is now stopped.");
     }
