@@ -7,8 +7,6 @@ import sdis.storage.Disk;
 
 import java.io.*;
 import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService {
@@ -21,7 +19,7 @@ public class BackupService {
     /**
      * End character
      */
-    public final static String CLRF = "\n\r";
+    public final static String CRLF = "\n\r";
 
     /**
      * Default capacity of the disk
