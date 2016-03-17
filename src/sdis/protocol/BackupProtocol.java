@@ -45,7 +45,7 @@ public class BackupProtocol {
     /**
      * Chunk number field
      */
-    public static final int CHUNK_NO_INDEX = 3;
+    public static final int CHUNK_NUMBER_INDEX = 3;
 
     /**
      * Replication degree field

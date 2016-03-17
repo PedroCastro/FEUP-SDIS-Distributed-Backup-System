@@ -228,5 +228,8 @@ public class Disk implements Serializable {
      */
     public synchronized void updateChunkState(final Chunk chunk) {
         files.get(chunk.getFileID()).put(chunk.getChunkNo(), chunk.getState());
+
+        // Save the disk
+        BackupService.getInstance().saveDisk();
     }
 }
