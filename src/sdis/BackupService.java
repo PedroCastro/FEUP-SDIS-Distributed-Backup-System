@@ -13,6 +13,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BackupService {
 
     /**
+     * Version of the protocol
+     */
+    public final static int VERSION = 1;
+
+    /**
+     * End character
+     */
+    public final static String CLRF = "\n\r";
+
+    /**
      * Default capacity of the disk
      */
     private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
@@ -221,6 +231,19 @@ public class BackupService {
         };
         mcChannelThread.start();
         multicastChannels.put(channel, mcChannelThread);
+    }
+
+    /**
+     * Send a message to a channel
+     * @param message message to be sent
+     * @param type type of the message to be sent
+     * @return true if message was sent, false otherwise
+     */
+    public boolean sendMessage(final byte[] message, ChannelType type) {
+        MulticastChannel channel = getChannelByType(type);
+        if(channel == null)
+            return false;
+        return channel.write(message);
     }
 
     /**
