@@ -86,14 +86,15 @@ public class BackupChunk implements Runnable {
      * @return backup chunk protocol message
      */
     public byte[] getMessage() {
-        String header = "PUTCHUNK "
-                + BackupService.VERSION + " "
+        String header =
+                BackupProtocol.PUTCHUNK_MESSAGE
+                + BackupProtocol.VERSION + " "
                 + BackupService.getInstance().getServerId() + " "
                 + chunk.getFileID() + " "
                 + chunk.getChunkNo() + " "
                 + chunk.getState().getMinReplicationDegree()
-                + BackupService.CRLF
-                + BackupService.CRLF;
+                + BackupProtocol.CRLF
+                + BackupProtocol.CRLF;
         return Utilities.concatBytes(header.getBytes(), chunk.getData());
     }
 }
