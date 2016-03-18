@@ -1,5 +1,6 @@
 package sdis;
 
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
@@ -11,6 +12,7 @@ import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -198,8 +200,12 @@ public class BackupService implements RMI{
         try {
             RMI rmiService = (RMI) UnicastRemoteObject.exportObject(this, 0);
 
-
-            LocateRegistry.createRegistry(2001);
+            try {
+                LocateRegistry.createRegistry(1099);
+            }
+            catch (ExportException e){
+                System.out.println("Registetry is running");
+            }
             Registry registry = LocateRegistry.getRegistry();
             registry.bind(this.getServerId(), rmiService);
 
@@ -213,6 +219,30 @@ public class BackupService implements RMI{
      * rmi testing func
      */
     public String test(){
-        return "yey";
+        return "yey"+ this.getServerId();
+    }
+    /**
+     * remote function to backup the given file
+     * @param file the file to be backed up
+     * @param repDegree the degree of replication for this file
+     */
+    @Override
+    public void backup(File file, int repDegree) throws RemoteException{
+
+    }
+
+    @Override
+    public void restore(File file) throws RemoteException{
+
+    }
+
+    @Override
+    public void delete(File file)throws RemoteException{
+
+    }
+
+    @Override
+    public void reclaim(File file)throws RemoteException{
+
     }
 }
