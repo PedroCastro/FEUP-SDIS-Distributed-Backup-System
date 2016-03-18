@@ -7,9 +7,14 @@ import sdis.storage.Disk;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.rmi.AlreadyBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BackupService {
+public class BackupService implements RMI{
 
     /**
      * Default capacity of the disk
@@ -49,6 +54,8 @@ public class BackupService {
 
         instance = new BackupService(args[0]);
 
+        instance.createRMI();
+
         // Create multicast channels
         instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MC, InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
         instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MDB, InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
@@ -57,7 +64,7 @@ public class BackupService {
         // Start the service
         instance.startService();
         try {
-            Thread.sleep(500);
+            Thread.sleep(100000000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -94,6 +101,7 @@ public class BackupService {
         this.serverId = serverId;
         this.disk = loadDisk(); saveDisk();
         this.channelsHandler = new ChannelsHandler();
+
 
         // Print disk information
         System.out.println("Disk - f:" + disk.getFreeBytes() + "b / u:" + disk.getUsedBytes() + "b / c:" + disk.getCapacity() + "b");
@@ -180,5 +188,31 @@ public class BackupService {
         channelsHandler.stop();
 
         System.out.println("Backup service is now stopped.");
+    }
+
+    /**
+     * Creates the RMI service
+     */
+    private void createRMI() {
+
+        try {
+            RMI rmiService = (RMI) UnicastRemoteObject.exportObject(this, 0);
+
+
+            LocateRegistry.createRegistry(2001);
+            Registry registry = LocateRegistry.getRegistry();
+            registry.bind(this.getServerId(), rmiService);
+
+        } catch (RemoteException|AlreadyBoundException e) {
+            System.err.println("Server exception: " + e.toString());
+            e.printStackTrace();
+            return;
+        }
+    }
+    /**
+     * rmi testing func
+     */
+    public String test(){
+        return "yey";
     }
 }
