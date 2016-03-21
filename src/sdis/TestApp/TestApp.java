@@ -1,10 +1,8 @@
 package sdis.TestApp;
 
-import sdis.BackupService;
 import sdis.RMI;
 
 import java.io.IOException;
-import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 

@@ -8,7 +8,7 @@ import sdis.utils.Utilities;
 /**
  * Backup chunk protocol
  */
-public class BackupChunk implements Runnable {
+public class BackupChunk implements BackupProtocol, Runnable {
 
     /**
      * Initial waiting time for responses in millis
@@ -85,6 +85,7 @@ public class BackupChunk implements Runnable {
      * Get the backup chunk protocol message
      * @return backup chunk protocol message
      */
+    @Override
     public byte[] getMessage() {
         String header =
                 BackupProtocol.PUTCHUNK_MESSAGE
