@@ -5,49 +5,43 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 
 /**
- * Stored chunk protocol
+ * Get chunk protocol
  */
-public class StoredChunk implements BackupProtocol, Runnable {
+public class GetChunk implements BackupProtocol, Runnable {
 
     /**
-     * Chunk that has been stored
+     * Chunk to be retrieved
      */
     private Chunk chunk;
 
     /**
-     * Constructor of StoredChunk
-     * @param chunk chunk that has been stored
+     * Constructor of GetChunk
+     * @param chunk chunk to be retrieved
      */
-    public StoredChunk(final Chunk chunk) {
+    public GetChunk(final Chunk chunk) {
         this.chunk = chunk;
     }
 
     /**
-     * Run method of the stored chunk
+     * Run method of the get chunk
      */
     @Override
     public void run() {
-        // Wait a random time between 0 and 400 before sending the stored message
-        try {
-            Thread.sleep((int)(Math.random() * 400));
-        } catch (InterruptedException ignore) {
-        }
-
         // Send stored chunk message
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 
-        System.out.println("A chunk has been stored in the disk!");
+        System.out.println("Retrieving a chunk!");
     }
 
     /**
-     * Get the stored chunk protocol message
-     * @return stored chunk protocol message
+     * Get the get chunk protocol message
+     * @return get chunk protocol message
      */
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.STORED_MESSAGE
+                BackupProtocol.GETCHUNK_MESSAGE
                 + BackupProtocol.VERSION + " "
                 + BackupService.getInstance().getServerId() + " "
                 + chunk.getFileID() + " "
