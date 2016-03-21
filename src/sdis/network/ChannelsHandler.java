@@ -206,6 +206,10 @@ public class ChannelsHandler {
      * @param data                 data of the chunk
      */
     private void handlePutChunk(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
+        // A peer must never store the chunks of its own files.
+        if (isListeningStoredConfirmations(fileId, chunkNumber))
+            return;
+
         Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
 
         // Check if chunk has been stored already
@@ -294,5 +298,20 @@ public class ChannelsHandler {
             replicas.remove(fileId);
         else
             replicas.put(fileId, fileReplicasCount);
+    }
+
+    /**
+     * Check if this peer is listening for stored confirmations for a given chunk
+     *
+     * @param fileId      file id of the chunk
+     * @param chunkNumber number of the chunk
+     * @return true if is listening, false otherwise
+     */
+    public boolean isListeningStoredConfirmations(final String fileId, final int chunkNumber) {
+        if (!replicas.containsKey(fileId))
+            return false;
+
+        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
+        return fileReplicasCount.containsKey(chunkNumber);
     }
 }
