@@ -2,6 +2,7 @@ package sdis.network;
 
 import sdis.BackupService;
 import sdis.protocol.BackupProtocol;
+import sdis.protocol.RestoreChunk;
 import sdis.protocol.StoredChunk;
 import sdis.storage.Chunk;
 import sdis.storage.ChunkState;
@@ -21,17 +22,31 @@ public class ChannelsHandler {
     private final Map<MulticastChannel, Thread> multicastChannels;
 
     /**
-     * Map to track the replicas of the chunks of a file being sent
+     * Map to track the mirrors of the chunks of a file being sent
      * <FileId, <ChunkNo, ChunkState>>
      */
-    private final Map<String, Map<Integer, ChunkState>> replicas;
+    private final Map<String, Map<Integer, ChunkState>> mirrorDevices;
+
+    /**
+     * Map with the chunks we are waiting for being restored
+     * <FileId, ChunkNo>
+     */
+    private final Map<String, Integer> waitingForChunks;
+
+    /**
+     * Map with chunks that will be restored
+     * <FileId, <ChunkNo, RestoreThread>>
+     */
+    private final Map<String, Map<Integer, Thread>> chunksForRestore;
 
     /**
      * Constructor of ChannelsHandler
      */
     public ChannelsHandler() {
         this.multicastChannels = new HashMap<>();
-        this.replicas = new HashMap<>();
+        this.mirrorDevices = new HashMap<>();
+        this.waitingForChunks = new HashMap<>();
+        this.chunksForRestore = new HashMap<>();
     }
 
     /**
@@ -87,7 +102,7 @@ public class ChannelsHandler {
      * @param type type of the channel
      * @return channel with that type
      */
-    public MulticastChannel getChannelByType(final ChannelType type) {
+    private MulticastChannel getChannelByType(final ChannelType type) {
         for (final MulticastChannel channel : multicastChannels.keySet())
             if (channel.getType() == type)
                 return channel;
@@ -137,6 +152,12 @@ public class ChannelsHandler {
     }
 
     /**
+     *
+     *      MESSAGES HANDLERS
+     *
+     */
+
+    /**
      * Handle a received message
      *
      * @param message message that was received
@@ -158,9 +179,13 @@ public class ChannelsHandler {
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             header[BackupProtocol.SENDER_INDEX]);
                     break;
+                case BackupProtocol.GETCHUNK_MESSAGE:
+                    handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
+                    break;
             }
         }
-        // Multicast Data Channel
+        // Multicast Data Backup Channel
         else if (channel == ChannelType.MDB) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
@@ -172,9 +197,16 @@ public class ChannelsHandler {
                     break;
             }
         }
-        // Multicast Restore Channel
+        // Multicast Data Restore Channel
         else if (channel == ChannelType.MDR) {
-
+            switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
+                case BackupProtocol.CHUNK_MESSAGE:
+                    byte[] body = Utilities.extractBody(message);
+                    handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                            body);
+                    break;
+            }
         }
     }
 
@@ -229,6 +261,46 @@ public class ChannelsHandler {
     }
 
     /**
+     * Handle the get chunk
+     *
+     * @param fileId               file id of the chunk
+     * @param chunkNumber          number of the chunk
+     */
+    private void handleGetChunk(final String fileId, final int chunkNumber) {
+        Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
+        if (chunk == null)
+            return;
+
+        // Send restore chunk
+        Thread thread = new Thread(new RestoreChunk(chunk));
+        thread.start();
+    }
+
+    /**
+     * Handle the restore chunk
+     *
+     * @param fileId               file id of the chunk
+     * @param chunkNumber          number of the chunk
+     * @param data                 data of the chunk
+     */
+    private void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
+        // Check if we were waiting to send this chunk for being restored
+        if(chunksForRestore.containsKey(fileId)) {
+            Map<Integer, Thread> chunks = chunksForRestore.get(fileId);
+            if(chunks.containsKey(chunkNumber)) {
+                chunks.get(chunkNumber).stop();
+                return;
+            }
+        }
+    }
+
+    /**
+     *
+     *      STORED CONFIRMATIONS METHODS
+     *
+     */
+
+    /**
      * Get the number of stored confirmations
      *
      * @param fileId      file id to get those
@@ -236,10 +308,10 @@ public class ChannelsHandler {
      * @return number of confirmations for the given chunk
      */
     public int getStoredConfirmations(final String fileId, final int chunkNumber) {
-        if (!replicas.containsKey(fileId))
+        if (!mirrorDevices.containsKey(fileId))
             return -1;
 
-        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))
             return -1;
 
@@ -254,10 +326,10 @@ public class ChannelsHandler {
      * @param deviceId    device id that has stored the chunk
      */
     private void addStoredConfirmation(final String fileId, final int chunkNumber, final String deviceId) {
-        if (!replicas.containsKey(fileId))
+        if (!mirrorDevices.containsKey(fileId))
             return;
 
-        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))
             return;
 
@@ -272,13 +344,13 @@ public class ChannelsHandler {
      */
     public void listenStoredConfirmations(final String fileId, final int chunkNumber) {
         Map<Integer, ChunkState> fileReplicasCount;
-        if (replicas.containsKey(fileId))
-            fileReplicasCount = replicas.get(fileId);
+        if (mirrorDevices.containsKey(fileId))
+            fileReplicasCount = mirrorDevices.get(fileId);
         else
             fileReplicasCount = new HashMap<>();
 
         fileReplicasCount.put(chunkNumber, new ChunkState(-1, 0));
-        replicas.put(fileId, fileReplicasCount);
+        mirrorDevices.put(fileId, fileReplicasCount);
     }
 
     /**
@@ -288,16 +360,16 @@ public class ChannelsHandler {
      * @param chunkNumber chunk number to listen to those
      */
     public void stopListenStoredConfirmations(final String fileId, final int chunkNumber) {
-        if (!replicas.containsKey(fileId))
+        if (!mirrorDevices.containsKey(fileId))
             return;
 
-        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         fileReplicasCount.remove(chunkNumber);
 
         if (fileReplicasCount.size() == 0)
-            replicas.remove(fileId);
+            mirrorDevices.remove(fileId);
         else
-            replicas.put(fileId, fileReplicasCount);
+            mirrorDevices.put(fileId, fileReplicasCount);
     }
 
     /**
@@ -308,10 +380,10 @@ public class ChannelsHandler {
      * @return true if is listening, false otherwise
      */
     public boolean isListeningStoredConfirmations(final String fileId, final int chunkNumber) {
-        if (!replicas.containsKey(fileId))
+        if (!mirrorDevices.containsKey(fileId))
             return false;
 
-        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         return fileReplicasCount.containsKey(chunkNumber);
     }
 }
