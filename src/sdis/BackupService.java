@@ -1,6 +1,5 @@
 package sdis;
 
-import jdk.nashorn.internal.ir.annotations.Ignore;
 import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
