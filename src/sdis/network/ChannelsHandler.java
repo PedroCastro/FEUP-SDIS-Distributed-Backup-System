@@ -2,6 +2,7 @@ package sdis.network;
 
 import sdis.BackupService;
 import sdis.protocol.BackupProtocol;
+import sdis.protocol.StoredChunk;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
@@ -109,6 +110,9 @@ public class ChannelsHandler {
                         continue;
 
                     System.out.println("Received " + data.length + " bytes.");
+
+                    // Handle the received message
+                    handleMessage(data, channel.getType());
                 }
             }
         };
@@ -141,25 +145,39 @@ public class ChannelsHandler {
         if (header == null || header.length <= 0)
             return;
 
-        if(Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
+        if (Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
             return;
 
+        // Multicast Control Channel
         if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.STORED_MESSAGE:
                     handleStoredChunk(header[BackupProtocol.FILE_ID_INDEX], Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
                     break;
             }
-        } else if (channel == ChannelType.MDB) {
-
-        } else if (channel == ChannelType.MDR) {
+        }
+        // Multicast Data Channel
+        else if (channel == ChannelType.MDB) {
+            switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
+                case BackupProtocol.PUTCHUNK_MESSAGE:
+                    byte[] body = Utilities.extractBody(message);
+                    handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                            Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),
+                            body);
+                    break;
+            }
+        }
+        // Multicast Restore Channel
+        else if (channel == ChannelType.MDR) {
 
         }
     }
 
     /**
      * Handle the stored chunk
-     * @param fileId file id of the chunk
+     *
+     * @param fileId      file id of the chunk
      * @param chunkNumber number of the chunk
      */
     private void handleStoredChunk(final String fileId, final int chunkNumber) {
@@ -168,10 +186,34 @@ public class ChannelsHandler {
 
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
-        if(chunk != null) {
+        if (chunk != null) {
             chunk.getState().increaseReplicas();
             BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
+    }
+
+    /**
+     * Handle the put chunk
+     *
+     * @param fileId               file id of the chunk
+     * @param chunkNumber          number of the chunk
+     * @param minReplicationDegree minimum replication degree of the chunk
+     * @param data                 data of the chunk
+     */
+    private void handlePutChunk(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
+        Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
+
+        // Send stored message
+        Thread thread = new Thread(new StoredChunk(chunk));
+        thread.start();
+
+
+        // Check if chunk has been stored already
+        if(BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber))
+            return;
+
+        // Save the chunk to the disk
+        BackupService.getInstance().getDisk().saveChunk(chunk);
     }
 
     /**
@@ -203,7 +245,7 @@ public class ChannelsHandler {
             return;
 
         Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
-        if(!fileReplicasCount.containsKey(chunkNumber))
+        if (!fileReplicasCount.containsKey(chunkNumber))
             return;
 
         fileReplicasCount.put(chunkNumber, fileReplicasCount.get(chunkNumber) + 1);
