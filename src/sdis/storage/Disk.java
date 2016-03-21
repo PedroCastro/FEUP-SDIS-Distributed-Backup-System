@@ -28,6 +28,7 @@ public class Disk implements Serializable {
 
     /**
      * Map with all files and chunks saved as well as their state
+     * <FileId, <ChunkNo, ChunkState>>
      */
     private Map<String, Map<Integer, ChunkState>> files;
 
