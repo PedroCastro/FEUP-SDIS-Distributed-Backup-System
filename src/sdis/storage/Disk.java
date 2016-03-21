@@ -150,6 +150,9 @@ public class Disk implements Serializable {
         // Save chunk in the disk
         try {
             File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
+            if(!chunkFile.mkdirs())
+                return false;
+
             BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
             chunkFileOutputStream.write(chunk.getData());
             chunkFileOutputStream.flush();
