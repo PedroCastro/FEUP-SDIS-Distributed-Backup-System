@@ -213,6 +213,12 @@ public class Disk implements Serializable {
         if (!chunkFile.delete())
             return false;
 
+        // Delete file folder if no more chunks are stored
+        File fileFolder = chunkFile.getParentFile();
+        if(fileFolder.list().length <= 0)
+            if(!fileFolder.delete())
+                return false;
+
         // Add free space
         usedBytes -= chunk.getData().length;
 
