@@ -38,19 +38,24 @@ public interface BackupProtocol {
     int VERSION_INDEX = 1;
 
     /**
+     * Sender of the message index
+     */
+    int SENDER_INDEX = 2;
+
+    /**
      * File Id field
      */
-    int FILE_ID_INDEX = 2;
+    int FILE_ID_INDEX = 3;
 
     /**
      * Chunk number field
      */
-    int CHUNK_NUMBER_INDEX = 3;
+    int CHUNK_NUMBER_INDEX = 4;
 
     /**
      * Replication degree field
      */
-    int REPLICATION_DEG_INDEX = 4;
+    int REPLICATION_DEG_INDEX = 5;
 
     /**
      *
