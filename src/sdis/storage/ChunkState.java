@@ -28,7 +28,7 @@ public class ChunkState implements Serializable {
     /**
      * Set with all mirror devices
      */
-    private Set<String> mirrorDevices;
+    private final Set<String> mirrorDevices;
 
     /**
      * Constructor of ChunkState
