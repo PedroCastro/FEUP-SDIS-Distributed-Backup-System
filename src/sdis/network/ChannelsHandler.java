@@ -152,7 +152,9 @@ public class ChannelsHandler {
         if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.STORED_MESSAGE:
-                    handleStoredChunk(header[BackupProtocol.FILE_ID_INDEX], Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
+                    handleStoredChunk(header[BackupProtocol.FILE_ID_INDEX],
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                            header[BackupProtocol.SENDER_INDEX]);
                     break;
             }
         }
@@ -179,15 +181,16 @@ public class ChannelsHandler {
      *
      * @param fileId      file id of the chunk
      * @param chunkNumber number of the chunk
+     * @param deviceId    device that has mirrored the chunk
      */
-    private void handleStoredChunk(final String fileId, final int chunkNumber) {
+    private void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
         // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber);
 
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
         if (chunk != null) {
-            chunk.getState().increaseReplicas();
+            chunk.getState().increaseReplicas(deviceId);
             BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
     }
@@ -209,7 +212,7 @@ public class ChannelsHandler {
 
 
         // Check if chunk has been stored already
-        if(BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber))
+        if (BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber))
             return;
 
         // Save the chunk to the disk

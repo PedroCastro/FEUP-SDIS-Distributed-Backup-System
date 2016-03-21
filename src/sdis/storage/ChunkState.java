@@ -1,6 +1,8 @@
 package sdis.storage;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Class to control the state of a chunk like the minimum replication degree
@@ -24,6 +26,11 @@ public class ChunkState implements Serializable {
     private int replicationDegree;
 
     /**
+     * Set with all mirror devices
+     */
+    private Set<String> mirrorDevices;
+
+    /**
      * Constructor of ChunkState
      * @param minReplicationDegree minimum degree of replication
      * @param replicationDegree current replication degree
@@ -31,6 +38,7 @@ public class ChunkState implements Serializable {
     public ChunkState(final int minReplicationDegree, final int replicationDegree) {
         this.minReplicationDegree = minReplicationDegree;
         this.replicationDegree = replicationDegree;
+        this.mirrorDevices = new HashSet<>();
     }
 
     /**
@@ -60,15 +68,23 @@ public class ChunkState implements Serializable {
 
     /**
      * Increase the replicas of the chunk
+     * @param deviceId device id that has mirrored the chunk
      */
-    public void increaseReplicas() {
+    public void increaseReplicas(final String deviceId) {
+        if(mirrorDevices.contains(deviceId))
+            return;
+        mirrorDevices.add(deviceId);
         this.replicationDegree++;
     }
 
     /**
      * Decrease the replicas of the chunk
+     * @param deviceId device id that has deleted the chunk
      */
-    public void decreaseReplicas() {
+    public void decreaseReplicas(final String deviceId) {
+        if(!mirrorDevices.contains(deviceId))
+            return;
+        mirrorDevices.remove(deviceId);
         this.replicationDegree--;
     }
 }
