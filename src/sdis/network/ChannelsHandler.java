@@ -4,6 +4,7 @@ import sdis.BackupService;
 import sdis.protocol.BackupProtocol;
 import sdis.protocol.StoredChunk;
 import sdis.storage.Chunk;
+import sdis.storage.ChunkState;
 import sdis.utils.Utilities;
 
 import java.util.HashMap;
@@ -21,8 +22,9 @@ public class ChannelsHandler {
 
     /**
      * Map to track the replicas of the chunks of a file being sent
+     * <FileId, <ChunkNo, ChunkState>>
      */
-    private final Map<String, Map<Integer, Integer>> replicas;
+    private final Map<String, Map<Integer, ChunkState>> replicas;
 
     /**
      * Constructor of ChannelsHandler
@@ -185,7 +187,7 @@ public class ChannelsHandler {
      */
     private void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
         // Add stored confirmation in case it is listening to confirmations
-        addStoredConfirmation(fileId, chunkNumber);
+        addStoredConfirmation(fileId, chunkNumber, deviceId);
 
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
@@ -206,17 +208,20 @@ public class ChannelsHandler {
     private void handlePutChunk(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
         Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
 
+        // Check if chunk has been stored already
+        if (BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber)) {
+            Thread thread = new Thread(new StoredChunk(chunk));
+            thread.start();
+            return;
+        }
+
+        // Save the chunk to the disk
+        if (!BackupService.getInstance().getDisk().saveChunk(chunk))
+            return;
+
         // Send stored message
         Thread thread = new Thread(new StoredChunk(chunk));
         thread.start();
-
-
-        // Check if chunk has been stored already
-        if (BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber))
-            return;
-
-        // Save the chunk to the disk
-        BackupService.getInstance().getDisk().saveChunk(chunk);
     }
 
     /**
@@ -230,11 +235,11 @@ public class ChannelsHandler {
         if (!replicas.containsKey(fileId))
             return -1;
 
-        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))
             return -1;
 
-        return fileReplicasCount.get(chunkNumber);
+        return fileReplicasCount.get(chunkNumber).getReplicationDegree();
     }
 
     /**
@@ -242,17 +247,17 @@ public class ChannelsHandler {
      *
      * @param fileId      file id to add the confirmation
      * @param chunkNumber chunk number to add the confirmation
+     * @param deviceId    device id that has stored the chunk
      */
-    private void addStoredConfirmation(final String fileId, final int chunkNumber) {
+    private void addStoredConfirmation(final String fileId, final int chunkNumber, final String deviceId) {
         if (!replicas.containsKey(fileId))
             return;
 
-        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))
             return;
 
-        fileReplicasCount.put(chunkNumber, fileReplicasCount.get(chunkNumber) + 1);
-        replicas.put(fileId, fileReplicasCount);
+        fileReplicasCount.get(chunkNumber).increaseReplicas(deviceId);
     }
 
     /**
@@ -262,13 +267,13 @@ public class ChannelsHandler {
      * @param chunkNumber chunk number to listen to those
      */
     public void listenStoredConfirmations(final String fileId, final int chunkNumber) {
-        Map<Integer, Integer> fileReplicasCount;
+        Map<Integer, ChunkState> fileReplicasCount;
         if (replicas.containsKey(fileId))
             fileReplicasCount = replicas.get(fileId);
         else
             fileReplicasCount = new HashMap<>();
 
-        fileReplicasCount.put(chunkNumber, 0);
+        fileReplicasCount.put(chunkNumber, new ChunkState(-1, 0));
         replicas.put(fileId, fileReplicasCount);
     }
 
@@ -282,7 +287,7 @@ public class ChannelsHandler {
         if (!replicas.containsKey(fileId))
             return;
 
-        Map<Integer, Integer> fileReplicasCount = replicas.get(fileId);
+        Map<Integer, ChunkState> fileReplicasCount = replicas.get(fileId);
         fileReplicasCount.remove(chunkNumber);
 
         if (fileReplicasCount.size() == 0)
