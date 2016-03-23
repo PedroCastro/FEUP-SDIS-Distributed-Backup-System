@@ -2,6 +2,7 @@ package sdis.network;
 
 import sdis.BackupService;
 import sdis.protocol.BackupProtocol;
+import sdis.protocol.BackupRemovedChunk;
 import sdis.protocol.RestoreChunk;
 import sdis.protocol.StoredChunk;
 import sdis.storage.Chunk;
@@ -41,6 +42,13 @@ public class ChannelsHandler {
     private final Map<String, Map<Integer, RestoreChunk>> chunksForRestore;
 
     /**
+     * Chunks to backup again because they were removed and the count dropped below the desired
+     * level of replication.
+     * <FileId, <ChunkNo, BackupRemovedChunk>>
+     */
+    private final Map<String, Map<Integer, BackupRemovedChunk>> chunksBackupAgain;
+
+    /**
      * Constructor of ChannelsHandler
      */
     public ChannelsHandler() {
@@ -48,6 +56,7 @@ public class ChannelsHandler {
         this.mirrorDevices = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
         this.chunksForRestore = new HashMap<>();
+        this.chunksBackupAgain = new HashMap<>();
     }
 
     /**
@@ -187,6 +196,11 @@ public class ChannelsHandler {
                 case BackupProtocol.DELETE_MESSAGE:
                     handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX]);
                     break;
+                case BackupProtocol.REMOVED_MESSAGE:
+                    handleRemovedChunk(header[BackupProtocol.FILE_ID_INDEX],
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                            header[BackupProtocol.SENDER_INDEX]);
+                    break;
             }
         }
         // Multicast Data Backup Channel
@@ -246,6 +260,16 @@ public class ChannelsHandler {
         if (isListeningStoredConfirmations(fileId, chunkNumber))
             return;
 
+        // Check if we were waiting the backup the chunk we are receiving
+        if (chunksBackupAgain.containsKey(fileId)) {
+            Map<Integer, BackupRemovedChunk> chunksToBackupAgain = chunksBackupAgain.get(fileId);
+            if (chunksToBackupAgain.containsKey(chunkNumber)) {
+                chunksToBackupAgain.get(chunkNumber).cancel();
+                return;
+            }
+        }
+
+        // Backup the received chunk
         Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
 
         // Check if chunk has been stored already
@@ -267,8 +291,8 @@ public class ChannelsHandler {
     /**
      * Handle the get chunk. Initiates a restore chunk protocol.
      *
-     * @param fileId               file id of the chunk
-     * @param chunkNumber          number of the chunk
+     * @param fileId      file id of the chunk
+     * @param chunkNumber number of the chunk
      */
     private void handleGetChunk(final String fileId, final int chunkNumber) {
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
@@ -283,15 +307,15 @@ public class ChannelsHandler {
     /**
      * Handle the restore chunk. When receives a restore chunk protocol message.
      *
-     * @param fileId               file id of the chunk
-     * @param chunkNumber          number of the chunk
-     * @param data                 data of the chunk
+     * @param fileId      file id of the chunk
+     * @param chunkNumber number of the chunk
+     * @param data        data of the chunk
      */
     private void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
         // Check if we were waiting to send this chunk for being restored
-        if(chunksForRestore.containsKey(fileId)) {
+        if (chunksForRestore.containsKey(fileId)) {
             Map<Integer, RestoreChunk> chunks = chunksForRestore.get(fileId);
-            if(chunks.containsKey(chunkNumber)) {
+            if (chunks.containsKey(chunkNumber)) {
                 chunks.get(chunkNumber).cancel();
                 return;
             }
@@ -327,6 +351,30 @@ public class ChannelsHandler {
             return;
         }
         System.out.println("Deleted a file from the backup!");
+    }
+
+    /**
+     * Handle the removed chunk
+     *
+     * @param fileId      file id of the chunk
+     * @param chunkNumber number of the chunk
+     * @param deviceId    device that has removed the chunk
+     */
+    private void handleRemovedChunk(final String fileId, final int chunkNumber, final String deviceId) {
+        // Update replication degree if that is the case
+        Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
+        if (chunk == null)
+            return;
+
+        chunk.getState().decreaseReplicas(deviceId);
+        BackupService.getInstance().getDisk().updateChunkState(chunk);
+
+        // Check replication level
+        if (chunk.getState().isSafe())
+            return;
+
+        final Thread thread = new Thread(new BackupRemovedChunk(chunk));
+        thread.start();
     }
 
     /**
