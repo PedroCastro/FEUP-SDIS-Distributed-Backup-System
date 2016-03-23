@@ -9,6 +9,7 @@ import sdis.storage.ChunkState;
 import sdis.utils.Utilities;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,13 +32,13 @@ public class ChannelsHandler {
      * Map with the chunks we are waiting for being restored
      * <FileId, ChunkNo>
      */
-    private final Map<String, Integer> waitingForChunks;
+    private final Map<String, List<Integer>> waitingForChunks;
 
     /**
      * Map with chunks that will be restored
      * <FileId, <ChunkNo, RestoreThread>>
      */
-    private final Map<String, Map<Integer, Thread>> chunksForRestore;
+    private final Map<String, Map<Integer, RestoreChunk>> chunksForRestore;
 
     /**
      * Constructor of ChannelsHandler
@@ -261,7 +262,7 @@ public class ChannelsHandler {
     }
 
     /**
-     * Handle the get chunk
+     * Handle the get chunk. Initiates a restore chunk protocol.
      *
      * @param fileId               file id of the chunk
      * @param chunkNumber          number of the chunk
@@ -277,7 +278,7 @@ public class ChannelsHandler {
     }
 
     /**
-     * Handle the restore chunk
+     * Handle the restore chunk. When receives a restore chunk protocol message.
      *
      * @param fileId               file id of the chunk
      * @param chunkNumber          number of the chunk
@@ -286,12 +287,30 @@ public class ChannelsHandler {
     private void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
         // Check if we were waiting to send this chunk for being restored
         if(chunksForRestore.containsKey(fileId)) {
-            Map<Integer, Thread> chunks = chunksForRestore.get(fileId);
+            Map<Integer, RestoreChunk> chunks = chunksForRestore.get(fileId);
             if(chunks.containsKey(chunkNumber)) {
-                chunks.get(chunkNumber).stop();
+                chunks.get(chunkNumber).cancel();
                 return;
             }
         }
+
+        // Check if we were expecting the chunk to come
+        if (!waitingForChunks.containsKey(fileId))
+            return;
+
+        final List<Integer> chunksWaiting = waitingForChunks.get(fileId);
+        if (!chunksWaiting.contains(chunkNumber))
+            return;
+
+        ChunkState state = BackupService.getInstance().getDisk().getChunkState(fileId, chunkNumber);
+        if (state == null)
+            state = new ChunkState(1, 1);
+        final Chunk chunk = new Chunk(fileId, chunkNumber, data, state);
+        if (!BackupService.getInstance().getDisk().saveChunk(chunk)) {
+            System.out.println("Failed to save the chunk after a restore protocol.");
+            return;
+        }
+        System.out.println("Restored the chunk successfully!");
     }
 
     /**

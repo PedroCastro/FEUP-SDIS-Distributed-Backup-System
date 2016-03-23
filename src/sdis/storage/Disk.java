@@ -96,12 +96,13 @@ public class Disk implements Serializable {
 
     /**
      * Get a chunk from the disk
-     * @param fileHash file hash of the chunk
+     *
+     * @param fileHash    file hash of the chunk
      * @param chunkNumber chunk number
      * @return chunk with that file hash and chunk number
      */
     public synchronized Chunk getChunk(String fileHash, int chunkNumber) {
-        if(!hasChunk(fileHash, chunkNumber))
+        if (!hasChunk(fileHash, chunkNumber))
             return null;
 
         // Chunk state
@@ -118,6 +119,21 @@ public class Disk implements Serializable {
         }
 
         return new Chunk(fileHash, chunkNumber, data, state);
+    }
+
+    /**
+     * Get the chunk state of a chunk
+     *
+     * @param fileHash    file hash of the chunk
+     * @param chunkNumber number of the chunk
+     * @return chunk state of the chunk
+     */
+    public synchronized ChunkState getChunkState(final String fileHash, int chunkNumber) {
+        if (!files.containsKey(fileHash))
+            return null;
+        if (!files.get(fileHash).containsKey(chunkNumber))
+            return null;
+        return files.get(fileHash).get(chunkNumber);
     }
 
     /**
@@ -139,7 +155,7 @@ public class Disk implements Serializable {
      * @param chunk to be added
      */
     public synchronized boolean saveChunk(final Chunk chunk) {
-        if(chunk == null)
+        if (chunk == null)
             return false;
 
         // Check free space
@@ -151,7 +167,7 @@ public class Disk implements Serializable {
         // Save chunk in the disk
         try {
             File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
-            if(!chunkFile.mkdirs())
+            if (!chunkFile.mkdirs())
                 return false;
 
             BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
@@ -196,7 +212,7 @@ public class Disk implements Serializable {
      * @return true if chunk was removed, false otherwise
      */
     public synchronized boolean removeChunk(final Chunk chunk) {
-        if(chunk == null)
+        if (chunk == null)
             return false;
 
         // Check disk space
@@ -216,8 +232,8 @@ public class Disk implements Serializable {
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
-        if(fileFolder.list().length <= 0)
-            if(!fileFolder.delete())
+        if (fileFolder.list().length <= 0)
+            if (!fileFolder.delete())
                 return false;
 
         // Add free space
@@ -234,6 +250,7 @@ public class Disk implements Serializable {
 
     /**
      * Update the state of a chunk
+     *
      * @param chunk chunk to be updated
      */
     public synchronized void updateChunkState(final Chunk chunk) {

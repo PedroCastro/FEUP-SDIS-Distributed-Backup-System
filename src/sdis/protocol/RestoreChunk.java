@@ -5,6 +5,8 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * Restore chunk protocol
  */
@@ -13,7 +15,12 @@ public class RestoreChunk implements BackupProtocol, Runnable {
     /**
      * Chunk to be backed up
      */
-    private Chunk chunk;
+    private final Chunk chunk;
+
+    /**
+     * Flag to restore or not the chunk
+     */
+    private final AtomicBoolean restore;
 
     /**
      * Constructor of BackupChunk
@@ -22,6 +29,7 @@ public class RestoreChunk implements BackupProtocol, Runnable {
      */
     public RestoreChunk(final Chunk chunk) {
         this.chunk = chunk;
+        this.restore = new AtomicBoolean(true);
     }
 
     /**
@@ -34,10 +42,20 @@ public class RestoreChunk implements BackupProtocol, Runnable {
         } catch (InterruptedException ignore) {
         }
 
+        if (!restore.get())
+            return;
+
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDR);
 
         System.out.println("Sent chunk to be restored");
+    }
+
+    /**
+     * Cancel the restore chunk
+     */
+    public void cancel() {
+        this.restore.set(false);
     }
 
     /**

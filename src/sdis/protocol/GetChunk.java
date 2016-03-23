@@ -12,7 +12,7 @@ public class GetChunk implements BackupProtocol, Runnable {
     /**
      * Chunk to be retrieved
      */
-    private Chunk chunk;
+    private final Chunk chunk;
 
     /**
      * Constructor of GetChunk
