@@ -12,7 +12,7 @@ public class StoredChunk implements BackupProtocol, Runnable {
     /**
      * Chunk that has been stored
      */
-    private Chunk chunk;
+    private final Chunk chunk;
 
     /**
      * Constructor of StoredChunk

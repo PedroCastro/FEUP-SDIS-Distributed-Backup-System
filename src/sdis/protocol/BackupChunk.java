@@ -23,7 +23,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     /**
      * Chunk to be backed up
      */
-    private Chunk chunk;
+    private final Chunk chunk;
 
     /**
      * Constructor of BackupChunk
