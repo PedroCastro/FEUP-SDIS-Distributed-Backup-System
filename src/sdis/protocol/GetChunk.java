@@ -27,7 +27,7 @@ public class GetChunk implements BackupProtocol, Runnable {
      */
     @Override
     public void run() {
-        // Send stored chunk message
+        // Send get chunk message
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 

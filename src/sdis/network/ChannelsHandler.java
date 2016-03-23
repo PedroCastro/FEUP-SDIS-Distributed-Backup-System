@@ -184,6 +184,9 @@ public class ChannelsHandler {
                     handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
                     break;
+                case BackupProtocol.DELETE_MESSAGE:
+                    handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX]);
+                    break;
             }
         }
         // Multicast Data Backup Channel
@@ -311,6 +314,19 @@ public class ChannelsHandler {
             return;
         }
         System.out.println("Restored the chunk successfully!");
+    }
+
+    /**
+     * Handle the delete file. Deletes all the chunks of a file.
+     *
+     * @param fileId file id to delete all the chunks
+     */
+    private void handleDeleteFile(final String fileId) {
+        if (!BackupService.getInstance().getDisk().removeChunks(fileId)) {
+            System.out.println("Failed to delete a file from the backup!");
+            return;
+        }
+        System.out.println("Deleted a file from the backup!");
     }
 
     /**

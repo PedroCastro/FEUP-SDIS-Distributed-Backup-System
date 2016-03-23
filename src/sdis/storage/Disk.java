@@ -101,7 +101,7 @@ public class Disk implements Serializable {
      * @param chunkNumber chunk number
      * @return chunk with that file hash and chunk number
      */
-    public synchronized Chunk getChunk(String fileHash, int chunkNumber) {
+    public synchronized Chunk getChunk(final String fileHash, final int chunkNumber) {
         if (!hasChunk(fileHash, chunkNumber))
             return null;
 
@@ -190,6 +190,25 @@ public class Disk implements Serializable {
 
         // Save the disk
         BackupService.getInstance().saveDisk();
+
+        return true;
+    }
+
+    /**
+     * Delete all the chunks of a file
+     *
+     * @param fileHash file hash to delete all the chunks
+     * @return true if successfull, false otherwise
+     */
+    public synchronized boolean removeChunks(final String fileHash) {
+        if (!files.containsKey(fileHash))
+            return true;
+
+        // Remove all chunks
+        final Map<Integer, ChunkState> chunks = files.get(fileHash);
+        for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet())
+            if (!removeChunk(fileHash, entry.getKey()))
+                return false;
 
         return true;
     }
