@@ -42,7 +42,7 @@ public class DeleteFile implements BackupProtocol, Runnable {
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.DELETE_MESSAGE
+                BackupProtocol.DELETE_MESSAGE + " "
                         + BackupProtocol.VERSION + " "
                         + BackupService.getInstance().getServerId() + " "
                         + fileHash + " "
