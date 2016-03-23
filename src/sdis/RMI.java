@@ -1,6 +1,7 @@
 package sdis;
 
 import java.io.File;
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
@@ -16,7 +17,7 @@ public interface RMI extends Remote{
      * @param file the file to be backed up
      * @param repDegree the degree of replication for this file
      */
-    void backup(File file, int repDegree) throws RemoteException;
+    int backup(String filename, int repDegree) throws RemoteException, IOException;
 
     void restore(File file) throws RemoteException;
 

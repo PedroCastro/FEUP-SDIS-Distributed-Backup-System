@@ -1,7 +1,9 @@
 package sdis.TestApp;
 
+import sdis.BackupService;
 import sdis.RMI;
 
+import java.io.File;
 import java.io.IOException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -40,9 +42,12 @@ public class TestApp {
                     System.out.println("java TestApp <peer_ap> BACKUP <file_path> <rep_degree> ");
                     return;
                 }
-                String response = rmi.test();
-                System.out.println(response);
-                //TODO chunck's and SENDPUTCHUNKS
+
+
+
+                if(rmi.backup(args[2].toString(),Integer.parseInt(args[3])) == -1)
+                    System.out.println("File does not exist");
+
                 break;
             case "RESTORE":
                 if (args.length < 4) {

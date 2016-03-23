@@ -3,16 +3,21 @@ package sdis;
 import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
+import sdis.protocol.BackupChunk;
+import sdis.storage.Chunk;
 import sdis.storage.Disk;
+import sdis.storage.FileChunker;
 
 import java.io.*;
 import java.net.InetAddress;
 import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService implements RMI{
@@ -97,7 +102,7 @@ public class BackupService implements RMI{
      *
      * @param serverId identification of the server instance
      */
-    private BackupService(final String serverId) {
+    private BackupService(final String serverId) throws RemoteException{
         this.isRunning = new AtomicBoolean(false);
         this.serverId = serverId;
         this.disk = loadDisk(); saveDisk();
@@ -206,7 +211,23 @@ public class BackupService implements RMI{
                 System.out.println("Registetry is running");
             }
             Registry registry = LocateRegistry.getRegistry();
-            registry.bind(this.getServerId(), rmiService);
+            try {
+                registry.bind(this.getServerId(), rmiService);
+            }
+            catch (AlreadyBoundException e)
+            {
+                try {
+                    registry.unbind(this.getServerId());
+                }
+                catch (NotBoundException e1)
+                {
+                    System.out.println("Registry not bound");
+                    return;
+                }
+
+                //rebind this server
+                registry.bind(this.getServerId(), rmiService);
+            }
 
         } catch (RemoteException|AlreadyBoundException e) {
             System.err.println("Server exception: " + e.toString());
@@ -221,25 +242,64 @@ public class BackupService implements RMI{
         return "yey"+ this.getServerId();
     }
     /**
-     * remote function to backup the given file
-     * @param file the file to be backed up
+     * Remote function to backup the given file
+     * @param filename the name of the file to be backed up
      * @param repDegree the degree of replication for this file
      */
     @Override
-    public void backup(File file, int repDegree) throws RemoteException{
+    public int backup(String filename, int repDegree) throws RemoteException, IOException{
+
+        File file = new File(filename);
+
+        if(!file.exists())
+        {
+            return -1;
+        }
+
+        String id = FileChunker.getFileChecksum(file);
+
+        //
+        int part = 0;
+        ArrayList<Chunk> chunkList = new ArrayList<>();
+
+        byte[] chunk = new byte[FileChunker.getMaxSizeChunk()];
+        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
+
+        while ((inputStream.read(chunk)) > 0) {
+            Chunk newChunk = new Chunk(id, part++, chunk, 0);
+            Thread thread = new Thread(new BackupChunk(newChunk));
+            thread.start();
+        }
+
+        return 0;
 
     }
 
+    /**
+     * Remote function to restore file //TODO ainda nao tenho a certeza se nao vamos por isto a devolver cenas
+     * @param file
+     * @throws RemoteException
+     */
     @Override
     public void restore(File file) throws RemoteException{
 
     }
 
+    /**
+     * Remote functionto delete file
+     * @param file
+     * @throws RemoteException
+     */
     @Override
     public void delete(File file)throws RemoteException{
 
     }
 
+    /**
+     * Remote function to reclaim given file
+     * @param file
+     * @throws RemoteException
+     */
     @Override
     public void reclaim(File file)throws RemoteException{
 

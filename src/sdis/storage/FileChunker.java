@@ -16,7 +16,7 @@ public class FileChunker {
     /**
      * Max Size of Chunk
      */
-    private static final int MAX_SIZE_CHUNK = 64000;
+    static final int MAX_SIZE_CHUNK = 64000;
 
     /**
      * Chunk a file
@@ -83,5 +83,13 @@ public class FileChunker {
                     .substring(1));
         }
         return stringBuilder.toString();
+    }
+
+    /**
+     * Method to return the maximum chunk size
+     * @return Maximum chunk size
+     */
+    public static int getMaxSizeChunk() {
+        return MAX_SIZE_CHUNK;
     }
 }

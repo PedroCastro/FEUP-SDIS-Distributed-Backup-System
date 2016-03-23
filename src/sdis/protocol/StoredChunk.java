@@ -47,7 +47,7 @@ public class StoredChunk implements BackupProtocol, Runnable {
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.STORED_MESSAGE
+                BackupProtocol.STORED_MESSAGE + " "
                 + BackupProtocol.VERSION + " "
                 + BackupService.getInstance().getServerId() + " "
                 + chunk.getFileID() + " "

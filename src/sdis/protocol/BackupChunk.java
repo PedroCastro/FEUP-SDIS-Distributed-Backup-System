@@ -88,7 +88,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.PUTCHUNK_MESSAGE
+                BackupProtocol.PUTCHUNK_MESSAGE + " "
                 + BackupProtocol.VERSION + " "
                 + BackupService.getInstance().getServerId() + " "
                 + chunk.getFileID() + " "

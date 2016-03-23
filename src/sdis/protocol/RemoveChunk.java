@@ -43,7 +43,7 @@ public class RemoveChunk implements BackupProtocol, Runnable {
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.REMOVED_MESSAGE
+                BackupProtocol.REMOVED_MESSAGE + " "
                         + BackupProtocol.VERSION + " "
                         + BackupService.getInstance().getServerId() + " "
                         + chunk.getFileID() + " "
