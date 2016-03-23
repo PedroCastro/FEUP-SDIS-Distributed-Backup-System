@@ -266,6 +266,7 @@ public class BackupService implements RMI{
         BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
 
         while ((inputStream.read(chunk)) > 0) {
+            System.out.println(part);
             Chunk newChunk = new Chunk(id, part++, chunk, 0);
             Thread thread = new Thread(new BackupChunk(newChunk));
             thread.start();
