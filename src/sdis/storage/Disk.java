@@ -3,6 +3,7 @@ package sdis.storage;
 import sdis.BackupService;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -166,9 +167,14 @@ public class Disk implements Serializable {
 
         // Save chunk in the disk
         try {
-            File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
-            if (!chunkFile.getParentFile().mkdirs())
-                return false;
+
+            File dir = new File("data" + File.separator + chunk.getFileID());
+
+            File chunkFile = new File(dir.toString() + File.separator + chunk.getChunkNo() + ".bin");
+            if (!dir.exists()) {
+                System.out.println("creating directory: " + dir.toString());
+                dir.mkdirs();
+            }
 
             BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
             chunkFileOutputStream.write(chunk.getData());
