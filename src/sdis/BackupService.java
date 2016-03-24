@@ -4,6 +4,7 @@ import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
 import sdis.protocol.BackupChunk;
+import sdis.protocol.GetChunk;
 import sdis.storage.Chunk;
 import sdis.storage.Disk;
 import sdis.storage.FileChunker;
@@ -28,9 +29,14 @@ public class BackupService implements RMI{
     private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
 
     /**
+     * Identification of the server
+     */
+    private String serverId = "default";
+
+    /**
      * File name of the disk
      */
-    private final static String DISK_FILENAME = "disk.iso";
+    private String DISK_FILENAME = "disk " + serverId + ".iso";
 
     /**
      * Instance of the backup service
@@ -83,11 +89,6 @@ public class BackupService implements RMI{
     public final AtomicBoolean isRunning;
 
     /**
-     * Identification of the server
-     */
-    private final String serverId;
-
-    /**
      * Disk of the backup service
      */
     private final Disk disk;
@@ -105,8 +106,9 @@ public class BackupService implements RMI{
     private BackupService(final String serverId) throws RemoteException{
         this.isRunning = new AtomicBoolean(false);
         this.serverId = serverId;
+        this.DISK_FILENAME = serverId + "_disk"+ ".iso";
         this.disk = loadDisk(); saveDisk();
-        this.channelsHandler = new ChannelsHandler();
+        this.channelsHandler = new ChannelsHandler(serverId);
 
 
         // Print disk information
@@ -258,51 +260,92 @@ public class BackupService implements RMI{
 
         String id = FileChunker.getFileChecksum(file);
 
+        this.disk.addFilename(filename,id);
+
         //
         int part = 0;
-        ArrayList<Chunk> chunkList = new ArrayList<>();
 
         byte[] chunk = new byte[FileChunker.getMaxSizeChunk()];
         BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
 
         while ((inputStream.read(chunk)) > 0) {
-            System.out.println(part);
-            Chunk newChunk = new Chunk(id, part++, chunk, 0);
+            Chunk newChunk = new Chunk(id, part++, chunk, repDegree);
             Thread thread = new Thread(new BackupChunk(newChunk));
             thread.start();
         }
+        inputStream.close();
+
+        this.getDisk().addNumberOfChunks(id,part);
+
 
         return 0;
 
     }
 
     /**
-     * Remote function to restore file //TODO ainda nao tenho a certeza se nao vamos por isto a devolver cenas
-     * @param file
+     * Remote function to restore file
+     * @param filename
      * @throws RemoteException
      */
     @Override
-    public void restore(File file) throws RemoteException{
+    public void restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
 
+        String id = this.getDisk().getId(filename);
+
+        int numberOfChunks = this.getDisk().getNumberOfChunks(id);
+
+        ArrayList<Thread> threads = new ArrayList<>();
+
+        System.out.println("yooo");
+
+        for(int i = 0; i < numberOfChunks; i++)
+        {
+            Chunk newChunk = new Chunk(id,i,(new byte[0]),0);
+            Thread thread = new Thread(new GetChunk(newChunk));
+            thread.start();
+            threads.add(thread);
+        }
+
+        for (Thread thread : threads) {
+            thread.join();
+        }
+
+        FileOutputStream fos = new FileOutputStream((new File(filename)),true);
+
+        File dir = new File("data" + File.separator + id);
+
+        for(int i = 0; i < numberOfChunks; i++)
+        {
+            File chunk = new File(dir.toString()+ File.separator  + Integer.toString(i) +".bin");
+            FileInputStream fis = new FileInputStream(chunk);
+            byte[] fileBytes = new byte[(int) chunk.length()];
+            int bytesRead = fis.read(fileBytes, 0,(int)  chunk.length());
+            assert(bytesRead == fileBytes.length);
+            assert(bytesRead == (int) chunk.length());
+            fos.write(fileBytes);
+            fos.flush();
+            fis.close();
+        }
+        fos.close();
     }
 
     /**
      * Remote functionto delete file
-     * @param file
+     * @param filename
      * @throws RemoteException
      */
     @Override
-    public void delete(File file)throws RemoteException{
+    public void delete(String filename)throws RemoteException{
 
     }
 
     /**
      * Remote function to reclaim given file
-     * @param file
+     * @param filename
      * @throws RemoteException
      */
     @Override
-    public void reclaim(File file)throws RemoteException{
+    public void reclaim(String filename)throws RemoteException{
 
     }
 }

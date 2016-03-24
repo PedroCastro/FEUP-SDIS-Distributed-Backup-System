@@ -1,7 +1,9 @@
 package sdis;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
@@ -19,10 +21,10 @@ public interface RMI extends Remote{
      */
     int backup(String filename, int repDegree) throws RemoteException, IOException;
 
-    void restore(File file) throws RemoteException;
+    void restore(String filename) throws RemoteException, FileNotFoundException,InterruptedException,IOException;
 
-    void delete(File file) throws RemoteException;
+    void delete(String filename) throws RemoteException;
 
-    void reclaim(File file) throws RemoteException;
+    void reclaim(String filename) throws RemoteException;
 
 }
