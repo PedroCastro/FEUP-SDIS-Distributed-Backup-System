@@ -49,14 +49,20 @@ public class ChannelsHandler {
     private final Map<String, Map<Integer, BackupRemovedChunk>> chunksBackupAgain;
 
     /**
+     * The id of the server of this channels handler
+     */
+    private final String serverId;
+
+    /**
      * Constructor of ChannelsHandler
      */
-    public ChannelsHandler() {
+    public ChannelsHandler(String serverId) {
         this.multicastChannels = new HashMap<>();
         this.mirrorDevices = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
         this.chunksForRestore = new HashMap<>();
         this.chunksBackupAgain = new HashMap<>();
+        this.serverId = serverId;
     }
 
     /**
@@ -181,6 +187,9 @@ public class ChannelsHandler {
         if (Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
             return;
 
+        if(header[BackupProtocol.SENDER_INDEX] == this.serverId)
+            return;
+
         // Multicast Control Channel
         if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
@@ -257,8 +266,9 @@ public class ChannelsHandler {
      */
     private void handlePutChunk(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
         // A peer must never store the chunks of its own files.
-        if (isListeningStoredConfirmations(fileId, chunkNumber))
+        if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
+        }
 
         // Check if we were waiting the backup the chunk we are receiving
         if (chunksBackupAgain.containsKey(fileId)) {
@@ -280,7 +290,7 @@ public class ChannelsHandler {
         }
 
         // Save the chunk to the disk
-        if (!BackupService.getInstance().getDisk().saveChunk(chunk))
+        if(!BackupService.getInstance().getDisk().saveChunk(chunk))
             return;
 
         // Send stored message

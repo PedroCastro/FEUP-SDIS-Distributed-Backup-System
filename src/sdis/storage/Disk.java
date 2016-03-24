@@ -34,6 +34,15 @@ public class Disk implements Serializable {
     private Map<String, Map<Integer, ChunkState>> files;
 
     /**
+     *  HashMap to be able to retrieve the id from the filename
+     */
+    public Map<String,String> filenames;
+    /**
+     *  HashMap to be able to retrieve the number of chunks of a file
+     */
+    public Map<String,Integer> filesizes;
+
+    /**
      * Constructor of Disk
      *
      * @param capacity capacity of the disk
@@ -42,6 +51,8 @@ public class Disk implements Serializable {
         this.capacityBytes = capacity;
         this.usedBytes = 0;
         this.files = new HashMap<>();
+        this.filenames = new HashMap<>();
+        this.filesizes = new HashMap<>();
     }
 
     /**
@@ -172,7 +183,6 @@ public class Disk implements Serializable {
 
             File chunkFile = new File(dir.toString() + File.separator + chunk.getChunkNo() + ".bin");
             if (!dir.exists()) {
-                System.out.println("creating directory: " + dir.toString());
                 dir.mkdirs();
             }
 
@@ -284,4 +294,43 @@ public class Disk implements Serializable {
         // Save the disk
         BackupService.getInstance().saveDisk();
     }
+
+    /**
+     * Add the id of a file to hashtable with its filename as key
+     * @param filename of the file
+     * @param id of the file
+     */
+    public synchronized void addFilename(String filename, String id){
+        if(!filenames.containsKey(filename))
+            filenames.put(filename,id);
+    }
+
+    /**
+     * Returns the id of the file with the given filename
+     * @param filename of the file
+     * @return id of the file
+     */
+    public synchronized String getId(String filename){
+        return filenames.get(filename);
+    }
+
+    /**
+     * Add the number of chunks of a given file
+     * @param id of the file
+     * @param size - number of chunks of the file
+     */
+    public synchronized void addNumberOfChunks(String id, int size)
+    {
+        filesizes.put(id,size);
+    }
+
+    /**
+     * Returns the number of chunks of a file
+     * @param id of the file
+     * @return number of chunks of the file
+     */
+    public synchronized int getNumberOfChunks(String id){
+        return filesizes.get(id);
+    }
+
 }
