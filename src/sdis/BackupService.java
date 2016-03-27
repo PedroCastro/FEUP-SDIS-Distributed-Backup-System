@@ -4,10 +4,12 @@ import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
 import sdis.protocol.BackupChunk;
+import sdis.protocol.DeleteFile;
 import sdis.protocol.GetChunk;
 import sdis.storage.Chunk;
 import sdis.storage.Disk;
 import sdis.storage.FileChunker;
+import sdis.utils.Utilities;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -19,6 +21,8 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService implements RMI{
@@ -250,7 +254,6 @@ public class BackupService implements RMI{
      */
     @Override
     public int backup(String filename, int repDegree) throws RemoteException, IOException{
-
         File file = new File(filename);
 
         if(!file.exists())
@@ -268,8 +271,10 @@ public class BackupService implements RMI{
         byte[] chunk = new byte[FileChunker.getMaxSizeChunk()];
         BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
 
-        while ((inputStream.read(chunk)) > 0) {
-            Chunk newChunk = new Chunk(id, part++, chunk, repDegree);
+        int size;
+        while ((size = inputStream.read(chunk)) > 0) {
+            byte[] currChunk = Arrays.copyOfRange(chunk,0,size);
+            Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
             Thread thread = new Thread(new BackupChunk(newChunk));
             thread.start();
         }
@@ -286,17 +291,21 @@ public class BackupService implements RMI{
      * Remote function to restore file
      * @param filename
      * @throws RemoteException
+     * @throws FileNotFoundException
+     * @throws InterruptedException
+     * @throws IOException
      */
     @Override
-    public void restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
+    public int restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
 
         String id = this.getDisk().getId(filename);
+
+        if(id == null)
+            return -1;
 
         int numberOfChunks = this.getDisk().getNumberOfChunks(id);
 
         ArrayList<Thread> threads = new ArrayList<>();
-
-        System.out.println("yooo");
 
         for(int i = 0; i < numberOfChunks; i++)
         {
@@ -304,10 +313,7 @@ public class BackupService implements RMI{
             Thread thread = new Thread(new GetChunk(newChunk));
             thread.start();
             threads.add(thread);
-        }
 
-        for (Thread thread : threads) {
-            thread.join();
         }
 
         FileOutputStream fos = new FileOutputStream((new File(filename)),true);
@@ -327,25 +333,35 @@ public class BackupService implements RMI{
             fis.close();
         }
         fos.close();
+
+        return 0;
     }
 
     /**
-     * Remote functionto delete file
-     * @param filename
+     * Remote function to delete a file
+     * @param filename of the file
      * @throws RemoteException
      */
     @Override
-    public void delete(String filename)throws RemoteException{
+    public int delete(String filename)throws RemoteException{
 
+        String id = this.getDisk().getId(filename);
+
+        if(id == null)
+            return -1;
+
+        (new DeleteFile(id)).run();
+
+        return 0;
     }
 
     /**
      * Remote function to reclaim given file
-     * @param filename
+     * @param space to reclaim
      * @throws RemoteException
      */
     @Override
-    public void reclaim(String filename)throws RemoteException{
-
+    public int reclaim(int space)throws RemoteException{
+        return 0;
     }
 }

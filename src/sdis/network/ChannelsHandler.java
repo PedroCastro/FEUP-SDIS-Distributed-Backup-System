@@ -9,6 +9,7 @@ import sdis.storage.Chunk;
 import sdis.storage.ChunkState;
 import sdis.utils.Utilities;
 
+import java.net.DatagramPacket;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,13 +137,13 @@ public class ChannelsHandler {
             public void run() {
                 System.out.println(channel.getType() + " is listening.");
 
-                byte[] data;
+                DatagramPacket data;
                 while (BackupService.getInstance().isRunning.get()) {
                     data = channel.read();
                     if (data == null)
                         continue;
 
-                    System.out.println("Received " + data.length + " bytes.");
+                    System.out.println("Received " + data.getLength() + " bytes.");
 
                     // Handle the received message
                     handleMessage(data, channel.getType());
@@ -176,11 +177,11 @@ public class ChannelsHandler {
     /**
      * Handle a received message
      *
-     * @param message message that was received
+     * @param packet packet that was received
      * @param channel channel that got the message
      */
-    private void handleMessage(final byte[] message, ChannelType channel) {
-        String[] header = Utilities.extractHeader(message);
+    private void handleMessage(final DatagramPacket packet, ChannelType channel) {
+        String[] header = Utilities.extractHeader(packet.getData());
         if (header == null || header.length <= 0)
             return;
 
@@ -216,7 +217,7 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDB) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(message);
+                    byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
                     handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),
@@ -228,7 +229,7 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDR) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(message);
+                    byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             body);

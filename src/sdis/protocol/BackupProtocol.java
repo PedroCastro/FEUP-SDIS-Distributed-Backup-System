@@ -1,5 +1,7 @@
 package sdis.protocol;
 
+import java.util.concurrent.Semaphore;
+
 /**
  * Backup Protocol Definitions
  */
@@ -15,6 +17,7 @@ public interface BackupProtocol {
      * Version of the protocol
      */
     int VERSION = 1;
+
 
     /**
      * End character
