@@ -53,7 +53,7 @@ public class TestApp {
             case "RESTORE":
                 if (args.length < 3) {
                     System.out.println("Please execute the backup service using the following format:");
-                    System.out.println("java TestApp <peer_ap> BACKUP <file_path>");
+                    System.out.println("java TestApp <peer_ap> RESTORE <file_path>");
                     return;
                 }
                 if(rmi.restore(args[2]) == -1)
@@ -62,13 +62,19 @@ public class TestApp {
             case "DELETE":
                 if (args.length < 3) {
                     System.out.println("Please execute the backup service using the following format:");
-                    System.out.println("java TestApp <peer_ap> BACKUP <file_path>");
+                    System.out.println("java TestApp <peer_ap> DELETE <file_path>");
                     return;
                 }
                 if(rmi.delete(args[2]) == -1)
                     System.out.println("File does not exist");
                 break;
             case "RECLAIM":
+                if (args.length < 3) {
+                    System.out.println("Please execute the backup service using the following format:");
+                    System.out.println("java TestApp <peer_ap> RECLAIM <size>");
+                    return;
+                }
+                rmi.reclaim(Integer.parseInt(args[2]));
                 break;
         }
 
