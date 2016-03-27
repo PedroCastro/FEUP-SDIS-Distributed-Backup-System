@@ -116,7 +116,7 @@ public class BackupService implements RMI{
 
 
         // Print disk information
-        System.out.println("Disk - f:" + disk.getFreeBytes() + "b / u:" + disk.getUsedBytes() + "b / c:" + disk.getCapacity() + "b");
+        disk.printInfo();
     }
 
     /**
@@ -312,12 +312,11 @@ public class BackupService implements RMI{
             Chunk newChunk = new Chunk(id,i,(new byte[0]),0);
             Thread thread = new Thread(new GetChunk(newChunk));
             thread.start();
-
         }
 
         FileOutputStream fos = new FileOutputStream((new File(filename)),true);
 
-        File dir = new File("data" + File.separator + id);
+        File dir = new File(this.getServerId().toString()+"data" + File.separator + id);
 
         for(int i = 0; i < numberOfChunks; i++)
         {
@@ -362,6 +361,10 @@ public class BackupService implements RMI{
      */
     @Override
     public int reclaim(int space)throws RemoteException{
+        disk.printInfo();
+        System.out.println("To reclaim " + space);
+        disk.freeSpace(space);
+        disk.printInfo();
         return 0;
     }
 }
