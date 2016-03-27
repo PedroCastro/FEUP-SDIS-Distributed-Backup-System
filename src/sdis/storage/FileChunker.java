@@ -4,6 +4,11 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -52,21 +57,16 @@ public class FileChunker {
      * @return SHA-256 file checksum
      */
     public static String getFileChecksum(File file) {
-        try (FileInputStream inputStream = new FileInputStream(file)) {
+
+        try {
+            Path p = Paths.get(file.getAbsolutePath());
+            BasicFileAttributes attributes = Files.getFileAttributeView(p, BasicFileAttributeView.class).readAttributes();
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-            byte[] bytesBuffer = new byte[1024];
-            int bytesRead;
-
-            while ((bytesRead = inputStream.read(bytesBuffer)) != -1) {
-                digest.update(bytesBuffer, 0, bytesRead);
-            }
-
-            byte[] hashedBytes = digest.digest();
-
-            return convertByteArrayToHexString(hashedBytes);
-        } catch (NoSuchAlgorithmException | IOException error) {
-            System.out.println("Error while hashing : " + error.getMessage());
+            digest.update(attributes.toString().getBytes());
+            return convertByteArrayToHexString(digest.digest());
+        }catch(NoSuchAlgorithmException | IOException e)
+        {
+            e.printStackTrace();
             return "error";
         }
     }
