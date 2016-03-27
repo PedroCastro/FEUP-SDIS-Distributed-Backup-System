@@ -15,7 +15,7 @@ public class MulticastChannel {
     /**
      * Maximum size per packet
      */
-    private static final int MAX_SIZE_PACKET = 64000;
+    private static final int MAX_SIZE_PACKET = 65000;
 
     /**
      * Multicast Channel type
@@ -40,12 +40,12 @@ public class MulticastChannel {
     /**
      * Buffer where the data received will be written to
      */
-    private final byte[] buffer;
+    private byte[] buffer;
 
     /**
      * Data packet to received the data from the channel
      */
-    private final DatagramPacket dataPacket;
+    private DatagramPacket dataPacket;
 
     /**
      * Constructor of MulticastChannel
@@ -62,10 +62,6 @@ public class MulticastChannel {
         // Join the multicast channel
         this.multiCastSocket = new MulticastSocket(port);
         this.multiCastSocket.joinGroup(address);
-
-        // Cached items
-        this.buffer = new byte[MAX_SIZE_PACKET];
-        this.dataPacket = new DatagramPacket(buffer, buffer.length);
     }
 
     /**
@@ -94,14 +90,16 @@ public class MulticastChannel {
 
     /**
      * Read a packet from the multicast channel
-     * @return read a packet from the channel
+     * @return DatagramPacket
      */
-    public byte[] read() {
-        Arrays.fill(buffer, (byte) 0); // Clear buffer
+    public DatagramPacket read() {
+        // Cached items
+        this.buffer = new byte[MAX_SIZE_PACKET];
+        this.dataPacket = new DatagramPacket(buffer, buffer.length);
         try {
             multiCastSocket.setSoTimeout(1000); // Wait one second to read data
             multiCastSocket.receive(dataPacket);
-            return dataPacket.getData();
+            return dataPacket;
         } catch (SocketTimeoutException e) {
             return null;
         } catch (IOException e) {

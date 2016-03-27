@@ -21,10 +21,10 @@ public interface RMI extends Remote{
      */
     int backup(String filename, int repDegree) throws RemoteException, IOException;
 
-    void restore(String filename) throws RemoteException, FileNotFoundException,InterruptedException,IOException;
+    int restore(String filename) throws RemoteException, FileNotFoundException,InterruptedException,IOException;
 
-    void delete(String filename) throws RemoteException;
+    int delete(String filename) throws RemoteException;
 
-    void reclaim(String filename) throws RemoteException;
+    int reclaim(int space) throws RemoteException;
 
 }

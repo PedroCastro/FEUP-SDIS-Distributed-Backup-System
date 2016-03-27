@@ -5,6 +5,8 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
+import java.util.concurrent.Semaphore;
+
 /**
  * Backup chunk protocol
  */
@@ -19,6 +21,12 @@ public class BackupChunk implements BackupProtocol, Runnable {
      * Maximum number of attempts to backup the chunk
      */
     private static final int MAX_ATTEMPTS = 5;
+
+    /**
+     * Maximum Threads Running
+     */
+    static Semaphore sem = new Semaphore(5);
+
 
     /**
      * Chunk to be backed up
@@ -38,6 +46,12 @@ public class BackupChunk implements BackupProtocol, Runnable {
      */
     @Override
     public void run() {
+        try {
+            sem.acquire();
+        }
+        catch(InterruptedException e){
+            System.out.println("A error with the semaphore has occurred");
+        }
         int currentWaitingTime = INITIAL_WAITING_TIME;
         int currentAttempt = 1;
         boolean finished = false;
@@ -65,7 +79,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
                 currentAttempt++;
 
                 if(currentAttempt > MAX_ATTEMPTS) {
-                    System.out.println("Could not get the minimum replication degree for the chunk!");
+                    System.out.println("Could not get the minimum replication degree for the chunk("+chunk.getChunkNo()+")!");
                     finished = true;
                 } else {
                     System.out.println("Chunk haven't got the desired replication degree, trying again!");
@@ -79,6 +93,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
             // Stop listen to stored confirmations
             BackupService.getInstance().getChannelsHandler().stopListenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
         }
+        sem.release();
     }
 
     /**

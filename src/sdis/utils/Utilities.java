@@ -54,7 +54,7 @@ public class Utilities {
      * @param message message to get its body extracted
      * @return extracted body
      */
-    public static byte[] extractBody(final byte[] message) {
+    public static byte[] extractBody(final byte[] message, int length) {
         ByteArrayInputStream stream = new ByteArrayInputStream(message);
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
 
@@ -76,6 +76,7 @@ public class Utilities {
 
         int bodyStartIndex = headerLinesLengthSum + numLines * BackupProtocol.CRLF.getBytes().length;
 
-        return Arrays.copyOfRange(message, bodyStartIndex, message.length);
+
+        return Arrays.copyOfRange(message, bodyStartIndex, length);
     }
 }

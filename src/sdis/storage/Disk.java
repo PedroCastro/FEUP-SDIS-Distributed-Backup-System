@@ -91,7 +91,7 @@ public class Disk implements Serializable {
         capacityBytes += bytes;
 
         // Save the disk
-        BackupService.getInstance().saveDisk();
+        this.saveDisk();
     }
 
     /**
@@ -103,7 +103,7 @@ public class Disk implements Serializable {
         capacityBytes = bytes;
 
         // Save the disk
-        BackupService.getInstance().saveDisk();
+        this.saveDisk();
     }
 
     /**
@@ -163,7 +163,6 @@ public class Disk implements Serializable {
 
     /**
      * Save a chunk to the disk
-     *
      * @param chunk to be added
      */
     public synchronized boolean saveChunk(final Chunk chunk) {
@@ -188,7 +187,7 @@ public class Disk implements Serializable {
 
             BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
             chunkFileOutputStream.write(chunk.getData());
-            chunkFileOutputStream.flush();
+            //chunkFileOutputStream.flush();
             chunkFileOutputStream.close();
         } catch (IOException e) {
             System.out.println("Failed to save chunk to the disk! " + e.getMessage());
@@ -205,7 +204,7 @@ public class Disk implements Serializable {
         files.get(chunk.getFileID()).put(chunk.getChunkNo(), chunk.getState());
 
         // Save the disk
-        BackupService.getInstance().saveDisk();
+        this.saveDisk();
 
         return true;
     }
@@ -222,9 +221,10 @@ public class Disk implements Serializable {
 
         // Remove all chunks
         final Map<Integer, ChunkState> chunks = files.get(fileHash);
-        for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet())
+        for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet()) {
             if (!removeChunk(fileHash, entry.getKey()))
                 return false;
+        }
 
         return true;
     }
@@ -278,7 +278,7 @@ public class Disk implements Serializable {
         files.get(chunk.getFileID()).remove(chunk.getChunkNo());
 
         // Save the disk
-        BackupService.getInstance().saveDisk();
+        this.saveDisk();
 
         return true;
     }
@@ -292,7 +292,7 @@ public class Disk implements Serializable {
         files.get(chunk.getFileID()).put(chunk.getChunkNo(), chunk.getState());
 
         // Save the disk
-        BackupService.getInstance().saveDisk();
+        this.saveDisk();
     }
 
     /**
@@ -301,8 +301,8 @@ public class Disk implements Serializable {
      * @param id of the file
      */
     public synchronized void addFilename(String filename, String id){
-        if(!filenames.containsKey(filename))
-            filenames.put(filename,id);
+        filenames.put(filename,id);
+        this.saveDisk();
     }
 
     /**
@@ -322,6 +322,7 @@ public class Disk implements Serializable {
     public synchronized void addNumberOfChunks(String id, int size)
     {
         filesizes.put(id,size);
+        this.saveDisk();
     }
 
     /**
@@ -333,4 +334,10 @@ public class Disk implements Serializable {
         return filesizes.get(id);
     }
 
+    /**
+     * Saves the current Disk to Disk File
+     */
+    public synchronized void saveDisk(){
+        BackupService.getInstance().saveDisk();
+    }
 }
