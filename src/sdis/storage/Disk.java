@@ -3,6 +3,8 @@ package sdis.storage;
 import sdis.BackupService;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -184,11 +186,11 @@ public class Disk implements Serializable {
             if (!dir.exists()) {
                 dir.mkdirs();
             }
-
-            BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(new FileOutputStream(chunkFile));
+            FileOutputStream f = new FileOutputStream(chunkFile);
+            BufferedOutputStream chunkFileOutputStream = new BufferedOutputStream(f);
             chunkFileOutputStream.write(chunk.getData());
-            //chunkFileOutputStream.flush();
             chunkFileOutputStream.close();
+            f.close();
         } catch (IOException e) {
             System.out.println("Failed to save chunk to the disk! " + e.getMessage());
             return false;
@@ -249,7 +251,6 @@ public class Disk implements Serializable {
     public synchronized boolean removeChunk(final Chunk chunk) {
         if (chunk == null)
             return false;
-
         // Check disk space
         if (chunk.getData().length > getUsedBytes()) {
             System.out.println("Removing more bytes than the ones being used!");
@@ -260,10 +261,11 @@ public class Disk implements Serializable {
         if (!hasChunk(chunk.getFileID(), chunk.getChunkNo()))
             return false;
 
-        // Remove chunk in the disk
-        File chunkFile = new File("data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
+        File chunkFile = new File("data" + File.separator + chunk.getFileID()+ File.separator + chunk.getChunkNo() + ".bin");
+        System.gc();
+
         if (!chunkFile.delete())
-            return false;
+                return false;
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
