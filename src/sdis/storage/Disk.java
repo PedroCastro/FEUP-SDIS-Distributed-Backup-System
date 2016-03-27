@@ -361,8 +361,7 @@ public class Disk implements Serializable {
 
         int minFreeSpace = usedBytes - space;
 
-        while(usedBytes > minFreeSpace)
-        {
+        outerloop:
             for(ConcurrentHashMap .Entry<String, ConcurrentHashMap <Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
                 for(ConcurrentHashMap .Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
                 {
@@ -370,10 +369,10 @@ public class Disk implements Serializable {
                     ChunkState state = chunksEntry.getValue();
                     if(state.getReplicationDegree()>state.getMinReplicationDegree())
                         removeChunk(chunk);
-
                     (new RemoveChunk(chunk)).run();
+                    if(usedBytes <= minFreeSpace)
+                        break outerloop;
                 }
-        }
 
         return true;
     }
