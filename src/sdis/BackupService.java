@@ -269,7 +269,8 @@ public class BackupService implements RMI{
         int part = 0;
 
         byte[] chunk = new byte[FileChunker.getMaxSizeChunk()];
-        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
+        FileInputStream f = new FileInputStream(file);
+        BufferedInputStream inputStream = new BufferedInputStream(f);
 
         int size;
         while ((size = inputStream.read(chunk)) > 0) {
@@ -279,6 +280,7 @@ public class BackupService implements RMI{
             thread.start();
         }
         inputStream.close();
+        f.close();
 
         this.getDisk().addNumberOfChunks(id,part);
 
@@ -305,14 +307,11 @@ public class BackupService implements RMI{
 
         int numberOfChunks = this.getDisk().getNumberOfChunks(id);
 
-        ArrayList<Thread> threads = new ArrayList<>();
-
         for(int i = 0; i < numberOfChunks; i++)
         {
             Chunk newChunk = new Chunk(id,i,(new byte[0]),0);
             Thread thread = new Thread(new GetChunk(newChunk));
             thread.start();
-            threads.add(thread);
 
         }
 
@@ -331,6 +330,7 @@ public class BackupService implements RMI{
             fos.write(fileBytes);
             fos.flush();
             fis.close();
+            chunk.delete();
         }
         fos.close();
 
