@@ -307,6 +307,15 @@ public class BackupService implements RMI{
 
         int numberOfChunks = this.getDisk().getNumberOfChunks(id);
 
+        ArrayList<Integer> array = new ArrayList<>();
+
+        for(int i = 0; i < numberOfChunks;i++)
+            array.add(i);
+
+        getChannelsHandler().waitingForChunks.put(id,array);
+
+        ArrayList<Thread> threads = new ArrayList<>();
+
         for(int i = 0; i < numberOfChunks; i++)
         {
             Chunk newChunk = new Chunk(id,i,(new byte[0]),0);
@@ -314,7 +323,14 @@ public class BackupService implements RMI{
             thread.start();
         }
 
-        FileOutputStream fos = new FileOutputStream((new File(filename)),true);
+        while(getChannelsHandler().waitingForChunks.containsKey(id));
+
+        File file = new File(filename);
+
+        if(file.exists())
+            file.delete();
+
+        FileOutputStream fos = new FileOutputStream(file,true);
 
         File dir = new File(this.getServerId().toString()+"data" + File.separator + id);
 
