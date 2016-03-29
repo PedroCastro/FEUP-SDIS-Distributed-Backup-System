@@ -315,6 +315,15 @@ public class Disk implements Serializable {
     }
 
     /**
+     * Remove filename from hashmap
+     * @param filename to be removed
+     */
+    public synchronized void removeFilename(String filename){
+        filenames.remove(filename);
+        this.saveDisk();
+    }
+
+    /**
      * Returns the id of the file with the given filename
      * @param filename of the file
      * @return id of the file
@@ -361,19 +370,21 @@ public class Disk implements Serializable {
 
         int minFreeSpace = usedBytes - space;
 
-        outerloop:
-            for(ConcurrentHashMap .Entry<String, ConcurrentHashMap <Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-                for(ConcurrentHashMap .Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
-                {
-                    Chunk chunk = getChunk(filesEntry.getKey(),chunksEntry.getKey());
-                    ChunkState state = chunksEntry.getValue();
-                    if(state.getReplicationDegree()>state.getMinReplicationDegree())
-                        removeChunk(chunk);
+        outerLoop:
+        for(ConcurrentHashMap .Entry<String, ConcurrentHashMap <Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+            for(ConcurrentHashMap .Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+            {
+                Chunk chunk = getChunk(filesEntry.getKey(),chunksEntry.getKey());
+                ChunkState state = chunksEntry.getValue();
+                if(state.getReplicationDegree()>state.getMinReplicationDegree()) {
+                    removeChunk(chunk);
                     (new RemoveChunk(chunk)).run();
-                    if(usedBytes <= minFreeSpace)
-                        break outerloop;
                 }
-
+                if(usedBytes <= minFreeSpace)
+                    break outerLoop;
+            }
+        if(usedBytes > minFreeSpace)
+            System.out.println("RIP");
         return true;
     }
 
