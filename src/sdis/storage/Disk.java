@@ -166,6 +166,18 @@ public class Disk implements Serializable {
         return files.get(fileHash).containsKey(chunkNumber);
     }
 
+    public synchronized void saveToFile(final Chunk chunk)
+    {
+        try {
+            RandomAccessFile  file = new RandomAccessFile(chunk.getFileID(), "rw");
+            file.seek(FileChunker.getMaxSizeChunk()*chunk.getChunkNo());
+            file.write(chunk.getData());
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Save a chunk to the disk
      * @param chunk to be added

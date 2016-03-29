@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 
 public class BackupService implements RMI{
 
@@ -31,6 +32,11 @@ public class BackupService implements RMI{
      * Default capacity of the disk
      */
     private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
+
+    /**
+     * Semaphore for restoring chunks
+     */
+    public Semaphore sem = new Semaphore(1);
 
     /**
      * Identification of the server
@@ -314,7 +320,8 @@ public class BackupService implements RMI{
 
         getChannelsHandler().waitingForChunks.put(id,array);
 
-        ArrayList<Thread> threads = new ArrayList<>();
+        //locking semaphore to wait for all chunks to be restored
+        sem.acquire();
 
         for(int i = 0; i < numberOfChunks; i++)
         {
@@ -323,31 +330,15 @@ public class BackupService implements RMI{
             thread.start();
         }
 
-        while(getChannelsHandler().waitingForChunks.containsKey(id));
+        //waits to aquire the sem ->ends the restore of all files
+        sem.acquire();
+        sem.release();
 
-        File file = new File(filename);
+        File file = new File(id);
 
-        if(file.exists())
-            file.delete();
 
-        FileOutputStream fos = new FileOutputStream(file,true);
-
-        File dir = new File(this.getServerId().toString()+"data" + File.separator + id);
-
-        for(int i = 0; i < numberOfChunks; i++)
-        {
-            File chunk = new File(dir.toString()+ File.separator  + Integer.toString(i) +".bin");
-            FileInputStream fis = new FileInputStream(chunk);
-            byte[] fileBytes = new byte[(int) chunk.length()];
-            int bytesRead = fis.read(fileBytes, 0,(int)  chunk.length());
-            assert(bytesRead == fileBytes.length);
-            assert(bytesRead == (int) chunk.length());
-            fos.write(fileBytes);
-            fos.flush();
-            fis.close();
-            chunk.delete();
-        }
-        fos.close();
+        if(file.canWrite())
+            file.renameTo(new File(filename));
 
         return 0;
     }
