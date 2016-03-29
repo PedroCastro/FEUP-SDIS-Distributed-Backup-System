@@ -67,7 +67,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
 
             // Wait confirmations
             try {
-                System.out.println("Waiting for stored chunk confirmations...");
+                //System.out.println("Waiting for stored chunk confirmations...");
                 Thread.sleep(currentWaitingTime);
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -82,7 +82,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
                     System.out.println("Could not get the minimum replication degree for the chunk("+chunk.getChunkNo()+")!");
                     finished = true;
                 } else {
-                    System.out.println("Chunk haven't got the desired replication degree, trying again!");
+                    //System.out.println("Chunk haven't got the desired replication degree, trying again!");
                     currentWaitingTime *= 2;
                 }
             } else {

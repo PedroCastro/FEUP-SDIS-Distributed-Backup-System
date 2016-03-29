@@ -351,6 +351,8 @@ public class BackupService implements RMI{
 
         (new DeleteFile(id)).run();
 
+        this.getDisk().removeFilename(filename);
+
         return 0;
     }
 

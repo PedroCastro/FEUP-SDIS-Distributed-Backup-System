@@ -137,16 +137,15 @@ public class ChannelsHandler {
             public void run() {
                 System.out.println(channel.getType() + " is listening.");
 
-                DatagramPacket data;
                 while (BackupService.getInstance().isRunning.get()) {
-                    data = channel.read();
+                    final DatagramPacket data = channel.read();
                     if (data == null)
                         continue;
 
-                    System.out.println("Received " + data.getLength() + " bytes.");
+                    //System.out.println("Received " + data.getLength() + " bytes.");
 
                     // Handle the received message
-                    handleMessage(data, channel.getType());
+                    new Thread(() -> handleMessage(data, channel.getType())).start();
                 }
             }
         };
@@ -188,8 +187,9 @@ public class ChannelsHandler {
         if (Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
             return;
 
-        if(header[BackupProtocol.SENDER_INDEX] == this.serverId)
+        if(header[BackupProtocol.SENDER_INDEX].equals(this.serverId))
             return;
+
 
         // Multicast Control Channel
         if (channel == ChannelType.MC) {
@@ -254,6 +254,29 @@ public class ChannelsHandler {
         if (chunk != null) {
             chunk.getState().increaseReplicas(deviceId);
             BackupService.getInstance().getDisk().updateChunkState(chunk);
+        }
+    }
+
+    /**
+     * Handle the putchunk message, with the enhacement
+     * @param fileId               file id of the chunk
+     * @param chunkNumber          number of the chunk
+     * @param minReplicationDegree minimum replication degree of the chunk
+     * @param data                 data of the chunk
+     */
+    private void handlePutChunkEnh(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data){
+        // A peer must never store the chunks of its own files.
+        if (isListeningStoredConfirmations(fileId, chunkNumber)) {
+            return;
+        }
+
+        // Check if we were waiting the backup the chunk we are receiving
+        if (chunksBackupAgain.containsKey(fileId)) {
+            Map<Integer, BackupRemovedChunk> chunksToBackupAgain = chunksBackupAgain.get(fileId);
+            if (chunksToBackupAgain.containsKey(chunkNumber)) {
+                chunksToBackupAgain.get(chunkNumber).cancel();
+                return;
+            }
         }
     }
 
