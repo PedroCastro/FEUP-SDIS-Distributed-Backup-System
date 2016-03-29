@@ -50,6 +50,19 @@ public class TestApp {
                     System.out.println("File does not exist");
 
                 break;
+            case "BACKUPENH":
+                if (args.length < 4) {
+                    System.out.println("Please execute the backup service using the following format:");
+                    System.out.println("java TestApp <peer_ap> BACKUP <file_path> <rep_degree> ");
+                    return;
+                }
+
+
+
+                if(rmi.backupEnh(args[2].toString(),Integer.parseInt(args[3])) == -1)
+                    System.out.println("File does not exist");
+
+                break;
             case "RESTORE":
                 if (args.length < 3) {
                     System.out.println("Please execute the backup service using the following format:");

@@ -27,6 +27,10 @@ public class BackupChunk implements BackupProtocol, Runnable {
      */
     static Semaphore sem = new Semaphore(5);
 
+    /**
+     * Enhancement boolean
+     */
+    private boolean enhanced = false;
 
     /**
      * Chunk to be backed up
@@ -39,6 +43,11 @@ public class BackupChunk implements BackupProtocol, Runnable {
      */
     public BackupChunk(final Chunk chunk) {
         this.chunk = chunk;
+    }
+
+    public BackupChunk(final Chunk chunk,boolean enhanced){
+        this.chunk = chunk;
+        this.enhanced = enhanced;
     }
 
     /**
@@ -104,7 +113,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     public byte[] getMessage() {
         String header =
                 BackupProtocol.PUTCHUNK_MESSAGE + " "
-                + BackupProtocol.VERSION + " "
+                + (enhanced ?  BackupProtocol.ENHANCEMENT : BackupProtocol.VERSION) + " "
                 + BackupService.getInstance().getServerId() + " "
                 + chunk.getFileID() + " "
                 + chunk.getChunkNo() + " "

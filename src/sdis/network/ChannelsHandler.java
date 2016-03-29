@@ -44,6 +44,8 @@ public class ChannelsHandler {
      */
     private final Map<String, Map<Integer, RestoreChunk>> chunksForRestore;
 
+    private Map<String, Map<Integer,Integer>> storedListened = new HashMap<>();
+
     /**
      * Chunks to backup again because they were removed and the count dropped below the desired
      * level of replication.
@@ -187,9 +189,6 @@ public class ChannelsHandler {
         if (header == null || header.length <= 0)
             return;
 
-        if (Integer.parseInt(header[BackupProtocol.VERSION_INDEX]) > BackupProtocol.VERSION)
-            return;
-
         if(header[BackupProtocol.SENDER_INDEX].equals(this.serverId))
             return;
 
@@ -203,7 +202,7 @@ public class ChannelsHandler {
                             header[BackupProtocol.SENDER_INDEX]);
                     break;
                 case BackupProtocol.GETCHUNK_MESSAGE:
-                    handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
+                        handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
                     break;
                 case BackupProtocol.DELETE_MESSAGE:
@@ -221,10 +220,14 @@ public class ChannelsHandler {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
                     byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
-                    handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
-                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
-                            Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),
-                            body);
+                    if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.VERSION)))
+                        handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
+                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
+                    else if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
+                        handlePutChunkEnh(header[BackupProtocol.FILE_ID_INDEX],
+                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
                     break;
             }
         }
@@ -251,6 +254,17 @@ public class ChannelsHandler {
     private synchronized void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
         // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber, deviceId);
+
+        System.out.println("ChunkNumber Stored :" + chunkNumber);
+        if(!BackupService.getInstance().getDisk().hasChunk(fileId,chunkNumber)) {
+            System.out.println("entra aqui");
+            if (!this.storedListened.containsKey(fileId))
+                this.storedListened.put(fileId, new HashMap<>());
+            if(this.storedListened.get(fileId).containsKey(chunkNumber))
+                this.storedListened.get(fileId).put(chunkNumber,this.storedListened.get(fileId).get(chunkNumber)+1);
+            else this.storedListened.get(fileId).put(chunkNumber,1);
+        }
+
 
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
@@ -280,6 +294,29 @@ public class ChannelsHandler {
                 chunksToBackupAgain.get(chunkNumber).cancel();
                 return;
             }
+        }
+        try {
+            if(!this.storedListened.containsKey(fileId))
+                this.storedListened.put(fileId,new HashMap<>());
+            if(!this.storedListened.get(fileId).containsKey(chunkNumber))
+                this.storedListened.get(fileId).put(chunkNumber,0);
+            System.out.println("Chunk Started :" + chunkNumber);
+            Thread.sleep((int)(Math.random() * 400));
+        }
+        catch (InterruptedException ignore) {
+        }
+        if(this.storedListened.get(fileId).get(chunkNumber) < minReplicationDegree) {
+            System.out.println("rip "+ chunkNumber +"- " + this.storedListened.get(fileId).get(chunkNumber));
+            this.storedListened.get(fileId).remove(chunkNumber);
+            if(this.storedListened.get(fileId).isEmpty())
+                this.storedListened.remove(fileId);
+            handlePutChunk(fileId, chunkNumber, minReplicationDegree, data);
+        }
+        else{
+            System.out.println("ignored");
+            this.storedListened.get(fileId).remove(chunkNumber);
+            if(this.storedListened.get(fileId).isEmpty())
+                this.storedListened.remove(fileId);
         }
     }
 

@@ -18,6 +18,10 @@ public interface BackupProtocol {
      */
     int VERSION = 1;
 
+    /**
+     * Version of the enhaced protocol
+     */
+    int ENHANCEMENT = 2;
 
     /**
      * End character
