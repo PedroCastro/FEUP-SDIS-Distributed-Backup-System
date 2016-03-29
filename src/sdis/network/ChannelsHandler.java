@@ -10,6 +10,7 @@ import sdis.storage.ChunkState;
 import sdis.utils.Utilities;
 
 import java.net.DatagramPacket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ public class ChannelsHandler {
      * Map with the chunks we are waiting for being restored
      * <FileId, ChunkNo>
      */
-    private final Map<String, List<Integer>> waitingForChunks;
+    public final Map<String, ArrayList<Integer>> waitingForChunks;
 
     /**
      * Map with chunks that will be restored
@@ -145,7 +146,8 @@ public class ChannelsHandler {
                     //System.out.println("Received " + data.getLength() + " bytes.");
 
                     // Handle the received message
-                    new Thread(() -> handleMessage(data, channel.getType())).start();
+                    //new Thread(() -> handleMessage(data, channel.getType())).start();
+                    handleMessage(data, channel.getType());
                 }
             }
         };
@@ -347,13 +349,13 @@ public class ChannelsHandler {
      */
     private void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
         // Check if we were waiting to send this chunk for being restored
-        if (chunksForRestore.containsKey(fileId)) {
+        /*if (chunksForRestore.containsKey(fileId)) {
             Map<Integer, RestoreChunk> chunks = chunksForRestore.get(fileId);
             if (chunks.containsKey(chunkNumber)) {
                 chunks.get(chunkNumber).cancel();
                 return;
             }
-        }
+        }*/
 
         // Check if we were expecting the chunk to come
         if (!waitingForChunks.containsKey(fileId))
@@ -371,7 +373,13 @@ public class ChannelsHandler {
             System.out.println("Failed to save the chunk after a restore protocol.");
             return;
         }
-        System.out.println("Restored the chunk successfully!");
+
+        chunksWaiting.remove(Integer.valueOf(chunkNumber));
+
+        if(chunksWaiting.isEmpty())
+            waitingForChunks.remove(fileId);
+
+        System.out.println("Restored the chunk successfully("+chunkNumber+")!");
     }
 
     /**
