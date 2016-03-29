@@ -376,4 +376,41 @@ public class BackupService implements RMI{
         disk.printInfo();
         return 0;
     }
+
+    @Override
+    public int backupEnh(String filename, int repDegree) throws RemoteException, IOException{
+        File file = new File(filename);
+
+        if(!file.exists())
+        {
+            return -1;
+        }
+
+        String id = FileChunker.getFileChecksum(file);
+
+        this.disk.addFilename(filename,id);
+
+        //
+        int part = 0;
+
+        byte[] chunk = new byte[FileChunker.getMaxSizeChunk()];
+        FileInputStream f = new FileInputStream(file);
+        BufferedInputStream inputStream = new BufferedInputStream(f);
+
+        int size;
+        while ((size = inputStream.read(chunk)) > 0) {
+            byte[] currChunk = Arrays.copyOfRange(chunk,0,size);
+            Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
+            Thread thread = new Thread(new BackupChunk(newChunk,true));
+            thread.start();
+        }
+        inputStream.close();
+        f.close();
+
+        this.getDisk().addNumberOfChunks(id,part);
+
+
+        return 0;
+
+    }
 }
