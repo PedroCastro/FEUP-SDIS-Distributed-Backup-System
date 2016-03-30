@@ -34,6 +34,7 @@ public class Chunk {
      */
     public Chunk(final String fileID, final int chunkNo, final byte[] data, final ChunkState state) {
         this(fileID, chunkNo, data, state.getMinReplicationDegree(), state.getReplicationDegree());
+        this.state.mirrorDevices = state.mirrorDevices;
     }
 
     /**

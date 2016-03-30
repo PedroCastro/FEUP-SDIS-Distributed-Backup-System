@@ -255,9 +255,7 @@ public class ChannelsHandler {
         // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber, deviceId);
 
-        System.out.println("ChunkNumber Stored :" + chunkNumber);
         if(!BackupService.getInstance().getDisk().hasChunk(fileId,chunkNumber)) {
-            System.out.println("entra aqui");
             if (!this.storedListened.containsKey(fileId))
                 this.storedListened.put(fileId, new HashMap<>());
             if(this.storedListened.get(fileId).containsKey(chunkNumber))
@@ -269,7 +267,17 @@ public class ChannelsHandler {
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
         if (chunk != null) {
-            chunk.getState().increaseReplicas(deviceId);
+            ChunkState chunkState = chunk.getState();
+            /*System.out.println("Set of ("+chunkNumber+") : " + chunkState.mirrorDevices.toString());
+            if(chunkState.mirrorDevices.contains(Integer.valueOf(3)))
+                System.out.println("Tem um 3");
+            else System.out.println("Nao tem um 3");
+            System.out.println("Replicas antes : " + chunkState.getReplicationDegree());*/
+            chunkState.increaseReplicas(Integer.parseInt(deviceId));
+            //System.out.println("Replicas depois : " + chunkState.getReplicationDegree());
+
+            //System.out.println(chunkState == chunk.getState());
+
             BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
     }
@@ -287,6 +295,9 @@ public class ChannelsHandler {
             return;
         }
 
+        if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
+            return;
+
         // Check if we were waiting the backup the chunk we are receiving
         if (chunksBackupAgain.containsKey(fileId)) {
             Map<Integer, BackupRemovedChunk> chunksToBackupAgain = chunksBackupAgain.get(fileId);
@@ -300,20 +311,17 @@ public class ChannelsHandler {
                 this.storedListened.put(fileId,new HashMap<>());
             if(!this.storedListened.get(fileId).containsKey(chunkNumber))
                 this.storedListened.get(fileId).put(chunkNumber,0);
-            System.out.println("Chunk Started :" + chunkNumber);
             Thread.sleep((int)(Math.random() * 400));
         }
         catch (InterruptedException ignore) {
         }
         if(this.storedListened.get(fileId).get(chunkNumber) < minReplicationDegree) {
-            System.out.println("rip "+ chunkNumber +"- " + this.storedListened.get(fileId).get(chunkNumber));
             this.storedListened.get(fileId).remove(chunkNumber);
             if(this.storedListened.get(fileId).isEmpty())
                 this.storedListened.remove(fileId);
             handlePutChunk(fileId, chunkNumber, minReplicationDegree, data);
         }
         else{
-            System.out.println("ignored");
             this.storedListened.get(fileId).remove(chunkNumber);
             if(this.storedListened.get(fileId).isEmpty())
                 this.storedListened.remove(fileId);
@@ -333,6 +341,10 @@ public class ChannelsHandler {
         if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
         }
+
+        if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
+            return;
+
 
         // Check if we were waiting the backup the chunk we are receiving
         if (chunksBackupAgain.containsKey(fileId)) {
@@ -416,7 +428,7 @@ public class ChannelsHandler {
             BackupService.getInstance().sem.release();
         }
 
-        System.out.println("Restored the chunk successfully("+chunkNumber+")!");
+        //System.out.println("Restored the chunk successfully("+chunkNumber+")!");
     }
 
     /**
@@ -445,7 +457,7 @@ public class ChannelsHandler {
         if (chunk == null)
             return;
 
-        chunk.getState().decreaseReplicas(deviceId);
+        chunk.getState().decreaseReplicas(Integer.parseInt(deviceId));
         BackupService.getInstance().getDisk().updateChunkState(chunk);
 
         // Check replication level
@@ -495,7 +507,7 @@ public class ChannelsHandler {
         if (!fileReplicasCount.containsKey(chunkNumber))
             return;
 
-        fileReplicasCount.get(chunkNumber).increaseReplicas(deviceId);
+        fileReplicasCount.get(chunkNumber).increaseReplicas(Integer.parseInt(deviceId));
     }
 
     /**
