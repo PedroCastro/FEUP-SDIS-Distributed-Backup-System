@@ -371,10 +371,7 @@ public class BackupService implements RMI{
      */
     @Override
     public int reclaim(int space)throws RemoteException{
-        disk.printInfo();
-        System.out.println("To reclaim " + space);
         disk.freeSpace(space);
-        disk.printInfo();
         return 0;
     }
 
