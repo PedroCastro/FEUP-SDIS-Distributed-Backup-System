@@ -33,10 +33,21 @@ public class ChannelsHandler {
     private final Map<String, Map<Integer, ChunkState>> mirrorDevices;
 
     /**
+     * Stored messages received
+     */
+    public Map<String,Map<Integer,Integer>> storedMessagesReceived = new HashMap<>();
+
+
+    /**
      * Map with the chunks we are waiting for being restored
      * <FileId, ChunkNo>
      */
     public final Map<String, ArrayList<Integer>> waitingForChunks;
+
+    /**
+     * Map with number of putchunks for chunk
+     */
+    public Map<String,Map<Integer,Integer>> putChunkListener = new HashMap<>();
 
     /**
      * Map with chunks that will be restored
@@ -220,12 +231,11 @@ public class ChannelsHandler {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
                     byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
-                    if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.VERSION)))
-                        handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
+                    if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
+                        handlePutChunkEnh(header[BackupProtocol.FILE_ID_INDEX],
                                 Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                                 Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
-                    else if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
-                        handlePutChunkEnh(header[BackupProtocol.FILE_ID_INDEX],
+                    else handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
                                 Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                                 Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
                     break;
@@ -254,6 +264,10 @@ public class ChannelsHandler {
     private synchronized void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
         // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber, deviceId);
+
+        if(storedMessagesReceived.containsKey(fileId))
+            if(storedMessagesReceived.get(fileId).containsKey(chunkNumber))
+                storedMessagesReceived.get(fileId).put(chunkNumber,storedMessagesReceived.get(fileId).get(chunkNumber)+1);
 
         if(!BackupService.getInstance().getDisk().hasChunk(fileId,chunkNumber)) {
             if (!this.storedListened.containsKey(fileId))
@@ -294,6 +308,9 @@ public class ChannelsHandler {
         if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
         }
+
+        if(addPutChunkToListener(fileId,chunkNumber))
+            return;
 
         if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
@@ -341,6 +358,9 @@ public class ChannelsHandler {
         if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
         }
+
+        if(addPutChunkToListener(fileId,chunkNumber))
+            return;
 
         if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
@@ -564,5 +584,14 @@ public class ChannelsHandler {
 
         Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         return fileReplicasCount.containsKey(chunkNumber);
+    }
+
+    public synchronized boolean addPutChunkToListener(String id,int chunkNumber){
+        if(!putChunkListener.containsKey(id))
+            return false;
+        if(!putChunkListener.get(id).containsKey(chunkNumber))
+            return false;
+        putChunkListener.get(id).put(chunkNumber,putChunkListener.get(id).get(chunkNumber)+1);
+        return true;
     }
 }

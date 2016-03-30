@@ -89,6 +89,14 @@ public class TestApp {
                 }
                 rmi.reclaim(Integer.parseInt(args[2]));
                 break;
+            case "RECLAIMENH":
+                if (args.length < 3) {
+                    System.out.println("Please execute the backup service using the following format:");
+                    System.out.println("java TestApp <peer_ap> RECLAIM <size>");
+                    return;
+                }
+                rmi.reclaimEnh(Integer.parseInt(args[2]));
+                break;
         }
 
     }

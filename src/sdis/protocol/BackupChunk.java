@@ -97,7 +97,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
                     currentWaitingTime *= 2;
                 }
             } else {
-                System.out.println("Chunk " + chunk.getChunkNo() + " got the minimum replication degree desired ( " + numberConfirmations + "/" + chunk.getState().getMinReplicationDegree() + ")!");
+                //System.out.println("Chunk " + chunk.getChunkNo() + " got the minimum replication degree desired ( " + numberConfirmations + "/" + chunk.getState().getMinReplicationDegree() + ")!");
                 finished = true;
             }
 

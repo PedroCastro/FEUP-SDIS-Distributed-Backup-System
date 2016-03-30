@@ -2,6 +2,7 @@ package sdis.storage;
 
 import sdis.BackupService;
 import sdis.protocol.RemoveChunk;
+import sdis.protocol.RemoveChunkEnh;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -382,7 +383,7 @@ public class Disk implements Serializable {
      * @param space to be free
      * @return true if the given space was made free, false if not
      */
-    public synchronized boolean freeSpace(int space){
+    public synchronized boolean freeSpace(int space,boolean enh){
         if(space > usedBytes)
             return false;
 
@@ -395,23 +396,33 @@ public class Disk implements Serializable {
                 Chunk chunk = getChunk(filesEntry.getKey(),chunksEntry.getKey());
                 ChunkState state = chunksEntry.getValue();
                 if(state.getReplicationDegree()>state.getMinReplicationDegree()) {
-                    if(removeChunk(chunk))
-                        (new RemoveChunk(chunk)).run();
+                    if(!enh) {
+                        if (removeChunk(chunk))
+                            (new RemoveChunk(chunk)).run();
+                    }
+                    else(new RemoveChunkEnh(chunk)).run();
                 }
                 if(usedBytes <= minFreeSpace)
                     break outerLoop;
             }
+        int tries = 1;
         outerLoop2:
-        while(usedBytes > minFreeSpace)
-            for(ConcurrentHashMap .Entry<String, ConcurrentHashMap <Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-                for(ConcurrentHashMap .Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+        while(usedBytes > minFreeSpace) {
+            if(tries > 3)
+                return false;
+            for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+                for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
                 {
-                    Chunk chunk = getChunk(filesEntry.getKey(),chunksEntry.getKey());
-                    if(removeChunk(chunk))
-                        (new RemoveChunk(chunk)).run();
-                    if(usedBytes <= minFreeSpace)
+                    Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
+                    if (!enh) {
+                        if (removeChunk(chunk))
+                            (new RemoveChunk(chunk)).run();
+                    } else (new RemoveChunkEnh(chunk)).run();
+                    if (usedBytes <= minFreeSpace)
                         break outerLoop2;
                 }
+            tries++;
+        }
         return true;
     }
 

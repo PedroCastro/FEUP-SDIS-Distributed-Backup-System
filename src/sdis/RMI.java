@@ -29,4 +29,8 @@ public interface RMI extends Remote{
 
     int backupEnh(String filename, int repDegree) throws RemoteException, IOException;
 
+    int reclaimEnh(int space) throws RemoteException;
+
+    int restoreEnh(String filename) throws RemoteException, FileNotFoundException,InterruptedException,IOException;
+
 }
