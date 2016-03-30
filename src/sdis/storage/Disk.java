@@ -242,7 +242,6 @@ public class Disk implements Serializable {
         // Remove all chunks
         Map<Integer, ChunkState> chunks = files.get(fileHash);
         for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet()) {
-            System.out.println("entrou");
             if (!removeChunk(fileHash, entry.getKey()))
                 return false;
         }

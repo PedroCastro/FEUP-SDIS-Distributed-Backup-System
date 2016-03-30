@@ -464,7 +464,12 @@ public class ChannelsHandler {
         if (chunk.getState().isSafe())
             return;
 
-        final Thread thread = new Thread(new BackupRemovedChunk(chunk));
+        BackupRemovedChunk backupRemovedChunk = new BackupRemovedChunk(chunk);
+
+        final Thread thread = new Thread(backupRemovedChunk);
+        if(!chunksBackupAgain.containsKey(chunk.getFileID()))
+            chunksBackupAgain.put(chunk.getFileID(), new HashMap<>());
+        chunksBackupAgain.get(chunk.getFileID()).put(chunk.getChunkNo(),backupRemovedChunk);
         thread.start();
     }
 
