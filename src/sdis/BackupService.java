@@ -86,7 +86,7 @@ public class BackupService implements RMI{
         // Start the service
         instance.startService();
 
-        instance.reclaim(instance.disk.getUsedBytes());
+        instance.reclaimEnh(instance.disk.getUsedBytes());
         try {
             Thread.sleep(100000000);
         } catch (InterruptedException e) {
@@ -337,7 +337,6 @@ public class BackupService implements RMI{
 
         File file = new File(id);
 
-
         if(file.canWrite())
             file.renameTo(new File(filename));
 
@@ -371,7 +370,7 @@ public class BackupService implements RMI{
      */
     @Override
     public int reclaim(int space)throws RemoteException{
-        disk.freeSpace(space);
+        disk.freeSpace(space,false);
         return 0;
     }
 
@@ -410,5 +409,43 @@ public class BackupService implements RMI{
 
         return 0;
 
+    }
+    /**
+     * Enhanced remote function to reclaim given file
+     * @param space to reclaim
+     * @throws RemoteException
+     */
+    @Override
+    public int reclaimEnh(int space)throws RemoteException{
+        new Thread(() -> disk.freeSpace(space,true)).start();
+        return 0;
+    }
+
+    /**
+     *Enhaced version of restore function
+     * @param filename of file to be restored
+     * @return -1 if errors have ocurred
+     * @throws RemoteException
+     * @throws FileNotFoundException
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    @Override
+    public int restoreEnh(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
+        String id = this.getDisk().getId(filename);
+
+        if(id == null)
+            return -1;
+
+        int numberOfChunks = this.getDisk().getNumberOfChunks(id);
+
+        ArrayList<Integer> array = new ArrayList<>();
+
+        for(int i = 0; i < numberOfChunks;i++)
+            array.add(i);
+
+        getChannelsHandler().waitingForChunks.put(id,array);
+
+        return 0;
     }
 }
