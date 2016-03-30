@@ -286,10 +286,8 @@ public class Disk implements Serializable {
         File chunkFile = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + chunk.getFileID()+ File.separator + chunk.getChunkNo() + ".bin");
         System.gc();
 
-        System.out.println("antes do delete");
         if (!chunkFile.delete())
                 return false;
-        System.out.println("depois do delete");
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
