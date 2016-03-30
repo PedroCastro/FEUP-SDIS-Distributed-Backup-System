@@ -85,6 +85,8 @@ public class BackupService implements RMI{
 
         // Start the service
         instance.startService();
+
+        instance.reclaim(instance.disk.getUsedBytes());
         try {
             Thread.sleep(100000000);
         } catch (InterruptedException e) {
@@ -119,7 +121,6 @@ public class BackupService implements RMI{
         this.DISK_FILENAME = serverId + "_disk"+ ".iso";
         this.disk = loadDisk(); saveDisk();
         this.channelsHandler = new ChannelsHandler(serverId);
-
 
         // Print disk information
         disk.printInfo();

@@ -31,19 +31,18 @@ public class GetChunk implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 
-        System.out.println("Retrieving a chunk!");
+        //System.out.println("Retrieving a chunk!");
 
         boolean finished = false;
         int currentAttempt = 1;
-        while(!finished)
-        {
-            if(currentAttempt > 5)
+        while(!finished) {
+            if (currentAttempt > 5)
                 break;
             int index = -1;
-            if(BackupService.getInstance().getChannelsHandler().waitingForChunks.containsKey(chunk.getFileID()))
+            if (BackupService.getInstance().getChannelsHandler().waitingForChunks.containsKey(chunk.getFileID()))
                 index = BackupService.getInstance().getChannelsHandler().waitingForChunks.get(chunk.getFileID()).indexOf(Integer.valueOf(chunk.getChunkNo()));
 
-            if(index != -1) {
+            if (index != -1) {
                 try {
                     //System.out.println("Waiting for stored chunk confirmations...");
                     Thread.sleep(1000);
@@ -52,11 +51,8 @@ public class GetChunk implements BackupProtocol, Runnable {
                 }
                 currentAttempt++;
                 BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
-            }
-            else finished = true;
+            } else finished = true;
         }
-        if(currentAttempt > 5)
-            System.out.println("Couldn't retrieve the chunk!");
     }
 
     /**

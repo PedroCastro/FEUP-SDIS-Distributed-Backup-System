@@ -42,9 +42,9 @@ public class BackupRemovedChunk implements BackupProtocol, Runnable {
         if (!backup.get())
             return;
 
-        System.out.println("Backing up a removed chunk because count dropped below the desired replication!");
+        System.out.println("Backing up a removed chunk("+chunk.getChunkNo()+") because count dropped below the desired replication!");
 
-        new BackupChunk(chunk).run();
+        new BackupChunk(chunk,true).run();
     }
 
     /**

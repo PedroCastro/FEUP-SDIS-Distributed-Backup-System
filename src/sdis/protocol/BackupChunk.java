@@ -25,7 +25,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     /**
      * Maximum Threads Running
      */
-    static Semaphore sem = new Semaphore(5);
+    static Semaphore sem = new Semaphore(10);
 
     /**
      * Enhancement boolean
@@ -83,7 +83,9 @@ public class BackupChunk implements BackupProtocol, Runnable {
             }
 
             // Check number confirmations
-            int numberConfirmations = BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
+            int numberConfirmations = Integer.valueOf(BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo()));
+            if(BackupService.getInstance().getDisk().hasChunk(chunk.getFileID(),chunk.getChunkNo()))
+                numberConfirmations++;
             if(numberConfirmations < chunk.getState().getMinReplicationDegree()) {
                 currentAttempt++;
 
@@ -104,6 +106,8 @@ public class BackupChunk implements BackupProtocol, Runnable {
         }
         sem.release();
     }
+
+
 
     /**
      * Get the backup chunk protocol message

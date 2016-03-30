@@ -28,7 +28,7 @@ public class ChunkState implements Serializable {
     /**
      * Set with all mirror devices
      */
-    private final Set<String> mirrorDevices;
+    public Set<Integer> mirrorDevices;
 
     /**
      * Constructor of ChunkState
@@ -70,10 +70,10 @@ public class ChunkState implements Serializable {
      * Increase the replicas of the chunk
      * @param deviceId device id that has mirrored the chunk
      */
-    public void increaseReplicas(final String deviceId) {
-        if(mirrorDevices.contains(deviceId))
+    public void increaseReplicas(Integer deviceId) {
+        if(this.mirrorDevices.contains(deviceId))
             return;
-        mirrorDevices.add(deviceId);
+        this.mirrorDevices.add(deviceId);
         this.replicationDegree++;
     }
 
@@ -81,10 +81,10 @@ public class ChunkState implements Serializable {
      * Decrease the replicas of the chunk
      * @param deviceId device id that has deleted the chunk
      */
-    public void decreaseReplicas(final String deviceId) {
-        if(!mirrorDevices.contains(deviceId))
+    public void decreaseReplicas(Integer deviceId) {
+        if(!this.mirrorDevices.contains(deviceId))
             return;
-        mirrorDevices.remove(deviceId);
+        this.mirrorDevices.remove(deviceId);
         this.replicationDegree--;
     }
 }
