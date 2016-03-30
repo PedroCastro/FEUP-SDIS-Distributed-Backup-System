@@ -129,7 +129,10 @@ public class Disk implements Serializable {
         File chunkFile = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
         byte[] data = new byte[(int) chunkFile.length()];
         try {
-            new FileInputStream(chunkFile).read(data);
+            FileInputStream fis = new FileInputStream(chunkFile);
+            fis.read(data);
+            fis.close();
+
         } catch (Exception e) {
             System.out.println("Error while fetching chunk from the disk! " + e.getMessage());
             return null;
@@ -237,8 +240,9 @@ public class Disk implements Serializable {
             return true;
 
         // Remove all chunks
-        final Map<Integer, ChunkState> chunks = files.get(fileHash);
+        Map<Integer, ChunkState> chunks = files.get(fileHash);
         for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet()) {
+            System.out.println("entrou");
             if (!removeChunk(fileHash, entry.getKey()))
                 return false;
         }
@@ -254,7 +258,10 @@ public class Disk implements Serializable {
      * @return true if successfull, false otherwise
      */
     public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
-        return removeChunk(getChunk(fileHash, chunkNumber));
+        Chunk chunk = getChunk(fileHash, chunkNumber);
+        if(chunk != null)
+            return removeChunk(getChunk(fileHash, chunkNumber));
+        else return true;
     }
 
     /**
@@ -279,8 +286,10 @@ public class Disk implements Serializable {
         File chunkFile = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + chunk.getFileID()+ File.separator + chunk.getChunkNo() + ".bin");
         System.gc();
 
+        System.out.println("antes do delete");
         if (!chunkFile.delete())
                 return false;
+        System.out.println("depois do delete");
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
