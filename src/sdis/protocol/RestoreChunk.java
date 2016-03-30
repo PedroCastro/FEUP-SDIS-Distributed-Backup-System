@@ -48,7 +48,7 @@ public class RestoreChunk implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDR);
 
-        System.out.println("Sent chunk to be restored ("+chunk.getChunkNo()+")");
+        //System.out.println("Sent chunk to be restored ("+chunk.getChunkNo()+")");
     }
 
     /**

@@ -31,7 +31,7 @@ public class DeleteFile implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 
-        System.out.println("Deleting a file from the backup service!");
+        //System.out.println("Deleting a file from the backup service!");
     }
 
     /**

@@ -37,7 +37,7 @@ public class StoredChunk implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 
-        System.out.println("The chunk(" + chunk.getChunkNo() + ") is stored in the disk!");
+        //System.out.println("The chunk(" + chunk.getChunkNo() + ") is stored in the disk!");
     }
 
     /**

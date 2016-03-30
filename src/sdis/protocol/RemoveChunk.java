@@ -32,7 +32,7 @@ public class RemoveChunk implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
 
-        System.out.println("Removed a chunk("+chunk.getChunkNo()+") from the backup system!");
+        //System.out.println("Removed a chunk("+chunk.getChunkNo()+") from the backup system!");
     }
 
     /**
