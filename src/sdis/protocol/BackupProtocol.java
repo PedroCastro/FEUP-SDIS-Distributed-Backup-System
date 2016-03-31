@@ -1,7 +1,5 @@
 package sdis.protocol;
 
-import java.util.concurrent.Semaphore;
-
 /**
  * Backup Protocol Definitions
  */
@@ -102,6 +100,7 @@ public interface BackupProtocol {
 
     /**
      * Get the protocol message
+     *
      * @return protocol message
      */
     byte[] getMessage();

@@ -25,6 +25,7 @@ public class FileChunker {
 
     /**
      * Chunk a file
+     *
      * @param file file to chunk
      * @return list with all the chunks of the file
      * @throws NoSuchAlgorithmException
@@ -35,7 +36,7 @@ public class FileChunker {
         ArrayList<Chunk> chunkList = new ArrayList<>();
 
         String id = getFileChecksum(file);
-        if(id.equalsIgnoreCase("error"))
+        if (id.equalsIgnoreCase("error"))
             return null;
 
         byte[] chunk = new byte[MAX_SIZE_CHUNK];
@@ -53,6 +54,7 @@ public class FileChunker {
 
     /**
      * Get the file checksum in SHA-256
+     *
      * @param file file to get the file checksum
      * @return SHA-256 file checksum
      */
@@ -64,8 +66,7 @@ public class FileChunker {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(attributes.toString().getBytes());
             return convertByteArrayToHexString(digest.digest());
-        }catch(NoSuchAlgorithmException | IOException e)
-        {
+        } catch (NoSuchAlgorithmException | IOException e) {
             e.printStackTrace();
             return "error";
         }
@@ -73,6 +74,7 @@ public class FileChunker {
 
     /**
      * Convert a byte array to a hexadecimal string
+     *
      * @param bytes bytes array to be converted
      * @return converted hexadecimal string
      */
@@ -87,6 +89,7 @@ public class FileChunker {
 
     /**
      * Method to return the maximum chunk size
+     *
      * @return Maximum chunk size
      */
     public static int getMaxSizeChunk() {

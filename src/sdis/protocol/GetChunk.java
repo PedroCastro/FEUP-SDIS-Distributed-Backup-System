@@ -16,6 +16,7 @@ public class GetChunk implements BackupProtocol, Runnable {
 
     /**
      * Constructor of GetChunk
+     *
      * @param chunk chunk to be retrieved
      */
     public GetChunk(final Chunk chunk) {
@@ -35,7 +36,7 @@ public class GetChunk implements BackupProtocol, Runnable {
 
         boolean finished = false;
         int currentAttempt = 1;
-        while(!finished) {
+        while (!finished) {
             if (currentAttempt > 5)
                 break;
             int index = -1;
@@ -57,18 +58,19 @@ public class GetChunk implements BackupProtocol, Runnable {
 
     /**
      * Get the get chunk protocol message
+     *
      * @return get chunk protocol message
      */
     @Override
     public byte[] getMessage() {
         String header =
                 BackupProtocol.GETCHUNK_MESSAGE + " "
-                + BackupProtocol.VERSION + " "
-                + BackupService.getInstance().getServerId() + " "
-                + chunk.getFileID() + " "
-                + chunk.getChunkNo()
-                + BackupProtocol.CRLF
-                + BackupProtocol.CRLF;
+                        + BackupProtocol.VERSION + " "
+                        + BackupService.getInstance().getServerId() + " "
+                        + chunk.getFileID() + " "
+                        + chunk.getChunkNo()
+                        + BackupProtocol.CRLF
+                        + BackupProtocol.CRLF;
         return header.getBytes();
     }
 }

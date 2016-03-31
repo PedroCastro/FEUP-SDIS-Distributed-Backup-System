@@ -1,11 +1,8 @@
 package sdis.TestApp;
 
-import sdis.BackupService;
 import sdis.RMI;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
@@ -29,14 +26,13 @@ public class TestApp {
             Registry registry = LocateRegistry.getRegistry(null);
 
             rmi = (RMI) registry.lookup(args[0]);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.err.println("Client exception: " + e.toString());
             e.printStackTrace();
             return;
         }
 
-        switch(args[1]){
+        switch (args[1]) {
             case "BACKUP":
                 if (args.length < 4) {
                     System.out.println("Please execute the backup service using the following format:");
@@ -45,8 +41,7 @@ public class TestApp {
                 }
 
 
-
-                if(rmi.backup(args[2].toString(),Integer.parseInt(args[3])) == -1)
+                if (rmi.backup(args[2].toString(), Integer.parseInt(args[3])) == -1)
                     System.out.println("File does not exist");
 
                 break;
@@ -58,8 +53,7 @@ public class TestApp {
                 }
 
 
-
-                if(rmi.backupEnh(args[2].toString(),Integer.parseInt(args[3])) == -1)
+                if (rmi.backupEnh(args[2].toString(), Integer.parseInt(args[3])) == -1)
                     System.out.println("File does not exist");
 
                 break;
@@ -69,7 +63,7 @@ public class TestApp {
                     System.out.println("java TestApp <peer_ap> RESTORE <file_path>");
                     return;
                 }
-                if(rmi.restore(args[2]) == -1)
+                if (rmi.restore(args[2]) == -1)
                     System.out.println("File does not exist");
                 break;
             case "DELETE":
@@ -78,7 +72,7 @@ public class TestApp {
                     System.out.println("java TestApp <peer_ap> DELETE <file_path>");
                     return;
                 }
-                if(rmi.delete(args[2]) == -1)
+                if (rmi.delete(args[2]) == -1)
                     System.out.println("File does not exist");
                 break;
             case "RECLAIM":

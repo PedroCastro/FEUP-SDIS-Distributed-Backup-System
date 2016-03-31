@@ -19,21 +19,20 @@ public class ChunkState implements Serializable {
      * Minimum degree of replication
      */
     private final int minReplicationDegree;
-
+    /**
+     * Set with all mirror devices
+     */
+    public Set<Integer> mirrorDevices;
     /**
      * Current replication degree
      */
     private int replicationDegree;
 
     /**
-     * Set with all mirror devices
-     */
-    public Set<Integer> mirrorDevices;
-
-    /**
      * Constructor of ChunkState
+     *
      * @param minReplicationDegree minimum degree of replication
-     * @param replicationDegree current replication degree
+     * @param replicationDegree    current replication degree
      */
     public ChunkState(final int minReplicationDegree, final int replicationDegree) {
         this.minReplicationDegree = minReplicationDegree;
@@ -43,6 +42,7 @@ public class ChunkState implements Serializable {
 
     /**
      * Get the minimum degree of replication
+     *
      * @return minimum degree of replication
      */
     public int getMinReplicationDegree() {
@@ -51,6 +51,7 @@ public class ChunkState implements Serializable {
 
     /**
      * Get the current degree of replication
+     *
      * @return current degree of replication
      */
     public int getReplicationDegree() {
@@ -60,6 +61,7 @@ public class ChunkState implements Serializable {
     /**
      * Check if the chunk is safe, that is, if the replication degree
      * is higher or equal than the minimum replication degree of the chunk
+     *
      * @return true if safe, false otherwise
      */
     public boolean isSafe() {
@@ -68,10 +70,11 @@ public class ChunkState implements Serializable {
 
     /**
      * Increase the replicas of the chunk
+     *
      * @param deviceId device id that has mirrored the chunk
      */
     public void increaseReplicas(Integer deviceId) {
-        if(this.mirrorDevices.contains(deviceId))
+        if (this.mirrorDevices.contains(deviceId))
             return;
         this.mirrorDevices.add(deviceId);
         this.replicationDegree++;
@@ -79,10 +82,11 @@ public class ChunkState implements Serializable {
 
     /**
      * Decrease the replicas of the chunk
+     *
      * @param deviceId device id that has deleted the chunk
      */
     public void decreaseReplicas(Integer deviceId) {
-        if(!this.mirrorDevices.contains(deviceId))
+        if (!this.mirrorDevices.contains(deviceId))
             return;
         this.mirrorDevices.remove(deviceId);
         this.replicationDegree--;

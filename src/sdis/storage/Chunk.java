@@ -27,10 +27,11 @@ public class Chunk {
 
     /**
      * Constructor of Chunk
-     * @param fileID identification of the file
+     *
+     * @param fileID  identification of the file
      * @param chunkNo number of the chunk
-     * @param data data in the chunk
-     * @param state state of the chunk
+     * @param data    data in the chunk
+     * @param state   state of the chunk
      */
     public Chunk(final String fileID, final int chunkNo, final byte[] data, final ChunkState state) {
         this(fileID, chunkNo, data, state.getMinReplicationDegree(), state.getReplicationDegree());
@@ -39,9 +40,10 @@ public class Chunk {
 
     /**
      * Constructor of Chunk
-     * @param fileID identification of the file
-     * @param chunkNo number of the chunk
-     * @param data data in the chunk
+     *
+     * @param fileID               identification of the file
+     * @param chunkNo              number of the chunk
+     * @param data                 data in the chunk
      * @param minReplicationDegree minimum degree of replication
      */
     public Chunk(final String fileID, final int chunkNo, final byte[] data, final int minReplicationDegree) {
@@ -50,11 +52,12 @@ public class Chunk {
 
     /**
      * Constructor of Chunk
-     * @param fileID identification of the file
-     * @param chunkNo number of the chunk
-     * @param data data in the chunk
+     *
+     * @param fileID               identification of the file
+     * @param chunkNo              number of the chunk
+     * @param data                 data in the chunk
      * @param minReplicationDegree minimum degree of replication
-     * @param replicationDegree replication degree of the chunk
+     * @param replicationDegree    replication degree of the chunk
      */
     public Chunk(final String fileID, final int chunkNo, final byte[] data, final int minReplicationDegree, final int replicationDegree) {
         this.fileID = fileID;
@@ -65,6 +68,7 @@ public class Chunk {
 
     /**
      * Get the file identification of the chunk
+     *
      * @return file identification of the chunk
      */
     public String getFileID() {
@@ -73,6 +77,7 @@ public class Chunk {
 
     /**
      * Get the number of the chunk
+     *
      * @return number of the chunk
      */
     public int getChunkNo() {
@@ -81,6 +86,7 @@ public class Chunk {
 
     /**
      * Get the data in the chunk
+     *
      * @return data in the chunk
      */
     public byte[] getData() {
@@ -89,6 +95,7 @@ public class Chunk {
 
     /**
      * Get the chunk state
+     *
      * @return state of the chunk
      */
     public ChunkState getState() {

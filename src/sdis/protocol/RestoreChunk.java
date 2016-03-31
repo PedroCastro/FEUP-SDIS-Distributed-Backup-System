@@ -38,7 +38,7 @@ public class RestoreChunk implements BackupProtocol, Runnable {
     @Override
     public void run() {
         try {
-            Thread.sleep((int)(Math.random() * 400));
+            Thread.sleep((int) (Math.random() * 400));
         } catch (InterruptedException ignore) {
         }
 

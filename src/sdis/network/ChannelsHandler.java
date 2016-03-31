@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
 
 /**
  * Handler for all the multicast channels
@@ -22,52 +21,43 @@ import java.util.concurrent.Semaphore;
 public class ChannelsHandler {
 
     /**
+     * Map with the chunks we are waiting for being restored
+     * <FileId, ChunkNo>
+     */
+    public final Map<String, ArrayList<Integer>> waitingForChunks;
+    /**
      * Map with all the multicast channels and correspondent thread
      */
     private final Map<MulticastChannel, Thread> multicastChannels;
-
     /**
      * Map to track the mirrors of the chunks of a file being sent
      * <FileId, <ChunkNo, ChunkState>>
      */
     private final Map<String, Map<Integer, ChunkState>> mirrorDevices;
-
-    /**
-     * Stored messages received
-     */
-    public Map<String,Map<Integer,Integer>> storedMessagesReceived = new HashMap<>();
-
-
-    /**
-     * Map with the chunks we are waiting for being restored
-     * <FileId, ChunkNo>
-     */
-    public final Map<String, ArrayList<Integer>> waitingForChunks;
-
-    /**
-     * Map with number of putchunks for chunk
-     */
-    public Map<String,Map<Integer,Integer>> putChunkListener = new HashMap<>();
-
     /**
      * Map with chunks that will be restored
      * <FileId, <ChunkNo, RestoreThread>>
      */
     private final Map<String, Map<Integer, RestoreChunk>> chunksForRestore;
-
-    private Map<String, Map<Integer,Integer>> storedListened = new HashMap<>();
-
     /**
      * Chunks to backup again because they were removed and the count dropped below the desired
      * level of replication.
      * <FileId, <ChunkNo, BackupRemovedChunk>>
      */
     private final Map<String, Map<Integer, BackupRemovedChunk>> chunksBackupAgain;
-
     /**
      * The id of the server of this channels handler
      */
     private final String serverId;
+    /**
+     * Stored messages received
+     */
+    public Map<String, Map<Integer, Integer>> storedMessagesReceived;
+    /**
+     * Map with number of putchunks for chunk
+     */
+    public Map<String, Map<Integer, Integer>> putChunkListener;
+    private Map<String, Map<Integer, Integer>> storedListened;
 
     /**
      * Constructor of ChannelsHandler
@@ -75,9 +65,12 @@ public class ChannelsHandler {
     public ChannelsHandler(String serverId) {
         this.multicastChannels = new HashMap<>();
         this.mirrorDevices = new HashMap<>();
+        this.storedMessagesReceived = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
+        this.putChunkListener = new HashMap<>();
         this.chunksForRestore = new HashMap<>();
         this.chunksBackupAgain = new HashMap<>();
+        this.storedListened = new HashMap<>();
         this.serverId = serverId;
     }
 
@@ -192,7 +185,7 @@ public class ChannelsHandler {
     /**
      * Handle a received message
      *
-     * @param packet packet that was received
+     * @param packet  packet that was received
      * @param channel channel that got the message
      */
     private synchronized void handleMessage(final DatagramPacket packet, ChannelType channel) {
@@ -200,7 +193,7 @@ public class ChannelsHandler {
         if (header == null || header.length <= 0)
             return;
 
-        if(header[BackupProtocol.SENDER_INDEX].equals(this.serverId))
+        if (header[BackupProtocol.SENDER_INDEX].equals(this.serverId))
             return;
 
 
@@ -213,7 +206,7 @@ public class ChannelsHandler {
                             header[BackupProtocol.SENDER_INDEX]);
                     break;
                 case BackupProtocol.GETCHUNK_MESSAGE:
-                        handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
+                    handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
                     break;
                 case BackupProtocol.DELETE_MESSAGE:
@@ -230,14 +223,14 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDB) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
-                    if(header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
+                    byte[] body = Utilities.extractBody(packet.getData(), packet.getLength());
+                    if (header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
                         handlePutChunkEnh(header[BackupProtocol.FILE_ID_INDEX],
                                 Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
-                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
+                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]), body);
                     else handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
-                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
-                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]),body);
+                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                            Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]), body);
                     break;
             }
         }
@@ -245,7 +238,7 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDR) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(packet.getData(),packet.getLength());
+                    byte[] body = Utilities.extractBody(packet.getData(), packet.getLength());
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             body);
@@ -265,16 +258,16 @@ public class ChannelsHandler {
         // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber, deviceId);
 
-        if(storedMessagesReceived.containsKey(fileId))
-            if(storedMessagesReceived.get(fileId).containsKey(chunkNumber))
-                storedMessagesReceived.get(fileId).put(chunkNumber,storedMessagesReceived.get(fileId).get(chunkNumber)+1);
+        if (storedMessagesReceived.containsKey(fileId))
+            if (storedMessagesReceived.get(fileId).containsKey(chunkNumber))
+                storedMessagesReceived.get(fileId).put(chunkNumber, storedMessagesReceived.get(fileId).get(chunkNumber) + 1);
 
-        if(!BackupService.getInstance().getDisk().hasChunk(fileId,chunkNumber)) {
+        if (!BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber)) {
             if (!this.storedListened.containsKey(fileId))
                 this.storedListened.put(fileId, new HashMap<>());
-            if(this.storedListened.get(fileId).containsKey(chunkNumber))
-                this.storedListened.get(fileId).put(chunkNumber,this.storedListened.get(fileId).get(chunkNumber)+1);
-            else this.storedListened.get(fileId).put(chunkNumber,1);
+            if (this.storedListened.get(fileId).containsKey(chunkNumber))
+                this.storedListened.get(fileId).put(chunkNumber, this.storedListened.get(fileId).get(chunkNumber) + 1);
+            else this.storedListened.get(fileId).put(chunkNumber, 1);
         }
 
 
@@ -298,21 +291,22 @@ public class ChannelsHandler {
 
     /**
      * Handle the putchunk message, with the enhacement
+     *
      * @param fileId               file id of the chunk
      * @param chunkNumber          number of the chunk
      * @param minReplicationDegree minimum replication degree of the chunk
      * @param data                 data of the chunk
      */
-    private synchronized void handlePutChunkEnh(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data){
+    private synchronized void handlePutChunkEnh(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
         // A peer must never store the chunks of its own files.
         if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
         }
 
-        if(addPutChunkToListener(fileId,chunkNumber))
+        if (addPutChunkToListener(fileId, chunkNumber))
             return;
 
-        if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
+        if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
 
         // Check if we were waiting the backup the chunk we are receiving
@@ -324,23 +318,21 @@ public class ChannelsHandler {
             }
         }
         try {
-            if(!this.storedListened.containsKey(fileId))
-                this.storedListened.put(fileId,new HashMap<>());
-            if(!this.storedListened.get(fileId).containsKey(chunkNumber))
-                this.storedListened.get(fileId).put(chunkNumber,0);
-            Thread.sleep((int)(Math.random() * 400));
+            if (!this.storedListened.containsKey(fileId))
+                this.storedListened.put(fileId, new HashMap<>());
+            if (!this.storedListened.get(fileId).containsKey(chunkNumber))
+                this.storedListened.get(fileId).put(chunkNumber, 0);
+            Thread.sleep((int) (Math.random() * 400));
+        } catch (InterruptedException ignore) {
         }
-        catch (InterruptedException ignore) {
-        }
-        if(this.storedListened.get(fileId).get(chunkNumber) < minReplicationDegree) {
+        if (this.storedListened.get(fileId).get(chunkNumber) < minReplicationDegree) {
             this.storedListened.get(fileId).remove(chunkNumber);
-            if(this.storedListened.get(fileId).isEmpty())
+            if (this.storedListened.get(fileId).isEmpty())
                 this.storedListened.remove(fileId);
             handlePutChunk(fileId, chunkNumber, minReplicationDegree, data);
-        }
-        else{
+        } else {
             this.storedListened.get(fileId).remove(chunkNumber);
-            if(this.storedListened.get(fileId).isEmpty())
+            if (this.storedListened.get(fileId).isEmpty())
                 this.storedListened.remove(fileId);
         }
     }
@@ -359,10 +351,10 @@ public class ChannelsHandler {
             return;
         }
 
-        if(addPutChunkToListener(fileId,chunkNumber))
+        if (addPutChunkToListener(fileId, chunkNumber))
             return;
 
-        if(BackupService.getInstance().getDisk().filenames.containsValue(fileId))
+        if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
 
 
@@ -386,7 +378,7 @@ public class ChannelsHandler {
         }
 
         // Save the chunk to the disk
-        if(!BackupService.getInstance().getDisk().saveChunk(chunk))
+        if (!BackupService.getInstance().getDisk().saveChunk(chunk))
             return;
 
         // Send stored message
@@ -405,8 +397,15 @@ public class ChannelsHandler {
         if (chunk == null)
             return;
 
+
+        RestoreChunk restoreChunk = new RestoreChunk(chunk);
+
+        if (!chunksForRestore.containsKey(chunk.getFileID()))
+            chunksForRestore.put(chunk.getFileID(), new HashMap<>());
+        chunksForRestore.get(chunk.getFileID()).put(chunk.getChunkNo(), restoreChunk);
+
         // Send restore chunk
-        Thread thread = new Thread(new RestoreChunk(chunk));
+        Thread thread = new Thread(restoreChunk);
         thread.start();
     }
 
@@ -419,13 +418,13 @@ public class ChannelsHandler {
      */
     private synchronized void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
         // Check if we were waiting to send this chunk for being restored
-        /*if (chunksForRestore.containsKey(fileId)) {
+        if (chunksForRestore.containsKey(fileId)) {
             Map<Integer, RestoreChunk> chunks = chunksForRestore.get(fileId);
             if (chunks.containsKey(chunkNumber)) {
                 chunks.get(chunkNumber).cancel();
                 return;
             }
-        }*/
+        }
 
         // Check if we were expecting the chunk to come
         if (!waitingForChunks.containsKey(fileId))
@@ -443,7 +442,7 @@ public class ChannelsHandler {
 
         chunksWaiting.remove(Integer.valueOf(chunkNumber));
 
-        if(chunksWaiting.isEmpty()) {
+        if (chunksWaiting.isEmpty()) {
             waitingForChunks.remove(fileId);
             BackupService.getInstance().sem.release();
         }
@@ -487,9 +486,9 @@ public class ChannelsHandler {
         BackupRemovedChunk backupRemovedChunk = new BackupRemovedChunk(chunk);
 
         final Thread thread = new Thread(backupRemovedChunk);
-        if(!chunksBackupAgain.containsKey(chunk.getFileID()))
+        if (!chunksBackupAgain.containsKey(chunk.getFileID()))
             chunksBackupAgain.put(chunk.getFileID(), new HashMap<>());
-        chunksBackupAgain.get(chunk.getFileID()).put(chunk.getChunkNo(),backupRemovedChunk);
+        chunksBackupAgain.get(chunk.getFileID()).put(chunk.getChunkNo(), backupRemovedChunk);
         thread.start();
     }
 
@@ -586,12 +585,12 @@ public class ChannelsHandler {
         return fileReplicasCount.containsKey(chunkNumber);
     }
 
-    public synchronized boolean addPutChunkToListener(String id,int chunkNumber){
-        if(!putChunkListener.containsKey(id))
+    public synchronized boolean addPutChunkToListener(String id, int chunkNumber) {
+        if (!putChunkListener.containsKey(id))
             return false;
-        if(!putChunkListener.get(id).containsKey(chunkNumber))
+        if (!putChunkListener.get(id).containsKey(chunkNumber))
             return false;
-        putChunkListener.get(id).put(chunkNumber,putChunkListener.get(id).get(chunkNumber)+1);
+        putChunkListener.get(id).put(chunkNumber, putChunkListener.get(id).get(chunkNumber) + 1);
         return true;
     }
 }
