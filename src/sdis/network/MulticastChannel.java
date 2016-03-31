@@ -5,7 +5,6 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.SocketTimeoutException;
-import java.util.Arrays;
 
 /**
  * Multicast Connection
@@ -49,9 +48,10 @@ public class MulticastChannel {
 
     /**
      * Constructor of MulticastChannel
-     * @param type type of the multicast channel
+     *
+     * @param type    type of the multicast channel
      * @param address address of the multicast channel
-     * @param port port of the multicast channel
+     * @param port    port of the multicast channel
      * @throws IOException error when creating multicast socket
      */
     public MulticastChannel(final ChannelType type, final InetAddress address, final int port) throws IOException {
@@ -66,6 +66,7 @@ public class MulticastChannel {
 
     /**
      * Get the type of the channel
+     *
      * @return type of the channel
      */
     public ChannelType getType() {
@@ -74,6 +75,7 @@ public class MulticastChannel {
 
     /**
      * Get the address of the channel
+     *
      * @return address of the channel
      */
     public InetAddress getAddress() {
@@ -82,6 +84,7 @@ public class MulticastChannel {
 
     /**
      * Get the port of the channel
+     *
      * @return port of the channel
      */
     public int getPort() {
@@ -90,6 +93,7 @@ public class MulticastChannel {
 
     /**
      * Read a packet from the multicast channel
+     *
      * @return DatagramPacket
      */
     public DatagramPacket read() {
@@ -110,6 +114,7 @@ public class MulticastChannel {
 
     /**
      * Write a message to the multicast channel
+     *
      * @param message message to be written
      * @return true if successfull, false otherwise
      */

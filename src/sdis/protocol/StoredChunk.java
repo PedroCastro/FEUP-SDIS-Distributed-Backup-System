@@ -16,6 +16,7 @@ public class StoredChunk implements BackupProtocol, Runnable {
 
     /**
      * Constructor of StoredChunk
+     *
      * @param chunk chunk that has been stored
      */
     public StoredChunk(final Chunk chunk) {
@@ -29,7 +30,7 @@ public class StoredChunk implements BackupProtocol, Runnable {
     public void run() {
         // Wait a random time between 0 and 400 before sending the stored message
         try {
-            Thread.sleep((int)(Math.random() * 400));
+            Thread.sleep((int) (Math.random() * 400));
         } catch (InterruptedException ignore) {
         }
 
@@ -42,18 +43,19 @@ public class StoredChunk implements BackupProtocol, Runnable {
 
     /**
      * Get the stored chunk protocol message
+     *
      * @return stored chunk protocol message
      */
     @Override
     public byte[] getMessage() {
         String header =
                 BackupProtocol.STORED_MESSAGE + " "
-                + BackupProtocol.VERSION + " "
-                + BackupService.getInstance().getServerId() + " "
-                + chunk.getFileID() + " "
-                + chunk.getChunkNo()
-                + BackupProtocol.CRLF
-                + BackupProtocol.CRLF;
+                        + BackupProtocol.VERSION + " "
+                        + BackupService.getInstance().getServerId() + " "
+                        + chunk.getFileID() + " "
+                        + chunk.getChunkNo()
+                        + BackupProtocol.CRLF
+                        + BackupProtocol.CRLF;
         return header.getBytes();
     }
 }

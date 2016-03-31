@@ -26,26 +26,25 @@ public class BackupChunk implements BackupProtocol, Runnable {
      * Maximum Threads Running
      */
     static Semaphore sem = new Semaphore(10);
-
+    /**
+     * Chunk to be backed up
+     */
+    private final Chunk chunk;
     /**
      * Enhancement boolean
      */
     private boolean enhanced = false;
 
     /**
-     * Chunk to be backed up
-     */
-    private final Chunk chunk;
-
-    /**
      * Constructor of BackupChunk
+     *
      * @param chunk chunk to be backed up
      */
     public BackupChunk(final Chunk chunk) {
         this.chunk = chunk;
     }
 
-    public BackupChunk(final Chunk chunk,boolean enhanced){
+    public BackupChunk(final Chunk chunk, boolean enhanced) {
         this.chunk = chunk;
         this.enhanced = enhanced;
     }
@@ -57,8 +56,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     public void run() {
         try {
             sem.acquire();
-        }
-        catch(InterruptedException e){
+        } catch (InterruptedException e) {
             System.out.println("A error with the semaphore has occurred");
         }
         int currentWaitingTime = INITIAL_WAITING_TIME;
@@ -67,7 +65,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
 
         byte[] message = getMessage();
 
-        while(!finished) {
+        while (!finished) {
             // Listen for stored confirmations
             BackupService.getInstance().getChannelsHandler().listenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
 
@@ -84,13 +82,13 @@ public class BackupChunk implements BackupProtocol, Runnable {
 
             // Check number confirmations
             int numberConfirmations = Integer.valueOf(BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo()));
-            if(BackupService.getInstance().getDisk().hasChunk(chunk.getFileID(),chunk.getChunkNo()))
+            if (BackupService.getInstance().getDisk().hasChunk(chunk.getFileID(), chunk.getChunkNo()))
                 numberConfirmations++;
-            if(numberConfirmations < chunk.getState().getMinReplicationDegree()) {
+            if (numberConfirmations < chunk.getState().getMinReplicationDegree()) {
                 currentAttempt++;
 
-                if(currentAttempt > MAX_ATTEMPTS) {
-                    System.out.println("Could not get the minimum replication degree for the chunk("+chunk.getChunkNo()+")!");
+                if (currentAttempt > MAX_ATTEMPTS) {
+                    System.out.println("Could not get the minimum replication degree for the chunk(" + chunk.getChunkNo() + ")!");
                     finished = true;
                 } else {
                     //System.out.println("Chunk haven't got the desired replication degree, trying again!");
@@ -108,22 +106,22 @@ public class BackupChunk implements BackupProtocol, Runnable {
     }
 
 
-
     /**
      * Get the backup chunk protocol message
+     *
      * @return backup chunk protocol message
      */
     @Override
     public byte[] getMessage() {
         String header =
                 BackupProtocol.PUTCHUNK_MESSAGE + " "
-                + (enhanced ?  BackupProtocol.ENHANCEMENT : BackupProtocol.VERSION) + " "
-                + BackupService.getInstance().getServerId() + " "
-                + chunk.getFileID() + " "
-                + chunk.getChunkNo() + " "
-                + chunk.getState().getMinReplicationDegree()
-                + BackupProtocol.CRLF
-                + BackupProtocol.CRLF;
+                        + (enhanced ? BackupProtocol.ENHANCEMENT : BackupProtocol.VERSION) + " "
+                        + BackupService.getInstance().getServerId() + " "
+                        + chunk.getFileID() + " "
+                        + chunk.getChunkNo() + " "
+                        + chunk.getState().getMinReplicationDegree()
+                        + BackupProtocol.CRLF
+                        + BackupProtocol.CRLF;
         return Utilities.concatBytes(header.getBytes(), chunk.getData());
     }
 }

@@ -14,6 +14,7 @@ import java.util.Arrays;
 public class Utilities {
     /**
      * Concatenate two byte arrays
+     *
      * @param a first byte array
      * @param b second byte array
      * @return concatenated byte array

@@ -9,7 +9,6 @@ import sdis.protocol.GetChunk;
 import sdis.storage.Chunk;
 import sdis.storage.Disk;
 import sdis.storage.FileChunker;
-import sdis.utils.Utilities;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -24,34 +23,58 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
 
-public class BackupService implements RMI{
+public class BackupService implements RMI {
 
     /**
      * Default capacity of the disk
      */
     private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
-
+    /**
+     * Instance of the backup service
+     */
+    private static BackupService instance;
+    /**
+     * Flag to tell if the service is running or not
+     */
+    public final AtomicBoolean isRunning;
+    /**
+     * Disk of the backup service
+     */
+    private final Disk disk;
+    /**
+     * Channels handler
+     */
+    private final ChannelsHandler channelsHandler;
     /**
      * Semaphore for restoring chunks
      */
     public Semaphore sem = new Semaphore(1);
-
     /**
      * Identification of the server
      */
     private String serverId = "default";
-
     /**
      * File name of the disk
      */
     private String DISK_FILENAME = "disk " + serverId + ".iso";
 
     /**
-     * Instance of the backup service
+     * Constructor of sdis.BackupService
+     *
+     * @param serverId identification of the server instance
      */
-    private static BackupService instance;
+    private BackupService(final String serverId) throws RemoteException {
+        this.isRunning = new AtomicBoolean(false);
+        this.serverId = serverId;
+        this.DISK_FILENAME = serverId + "_disk" + ".iso";
+        this.disk = loadDisk();
+        saveDisk();
+        this.channelsHandler = new ChannelsHandler(serverId);
+
+        // Print disk information
+        disk.printInfo();
+    }
 
     /**
      * Instance of the backup service
@@ -96,37 +119,6 @@ public class BackupService implements RMI{
     }
 
     /**
-     * Flag to tell if the service is running or not
-     */
-    public final AtomicBoolean isRunning;
-
-    /**
-     * Disk of the backup service
-     */
-    private final Disk disk;
-
-    /**
-     * Channels handler
-     */
-    private final ChannelsHandler channelsHandler;
-
-    /**
-     * Constructor of sdis.BackupService
-     *
-     * @param serverId identification of the server instance
-     */
-    private BackupService(final String serverId) throws RemoteException{
-        this.isRunning = new AtomicBoolean(false);
-        this.serverId = serverId;
-        this.DISK_FILENAME = serverId + "_disk"+ ".iso";
-        this.disk = loadDisk(); saveDisk();
-        this.channelsHandler = new ChannelsHandler(serverId);
-
-        // Print disk information
-        disk.printInfo();
-    }
-
-    /**
      * Get the server identification
      *
      * @return server identification
@@ -146,6 +138,7 @@ public class BackupService implements RMI{
 
     /**
      * Get the channels handler
+     *
      * @return channels handler
      */
     public ChannelsHandler getChannelsHandler() {
@@ -219,21 +212,16 @@ public class BackupService implements RMI{
 
             try {
                 LocateRegistry.createRegistry(1099);
-            }
-            catch (ExportException e){
+            } catch (ExportException e) {
                 System.out.println("Registetry is running");
             }
             Registry registry = LocateRegistry.getRegistry();
             try {
                 registry.bind(this.getServerId(), rmiService);
-            }
-            catch (AlreadyBoundException e)
-            {
+            } catch (AlreadyBoundException e) {
                 try {
                     registry.unbind(this.getServerId());
-                }
-                catch (NotBoundException e1)
-                {
+                } catch (NotBoundException e1) {
                     System.out.println("Registry not bound");
                     return;
                 }
@@ -242,35 +230,37 @@ public class BackupService implements RMI{
                 registry.bind(this.getServerId(), rmiService);
             }
 
-        } catch (RemoteException|AlreadyBoundException e) {
+        } catch (RemoteException | AlreadyBoundException e) {
             System.err.println("Server exception: " + e.toString());
             e.printStackTrace();
             return;
         }
     }
+
     /**
      * rmi testing func
      */
-    public String test(){
-        return "yey"+ this.getServerId();
+    public String test() {
+        return "yey" + this.getServerId();
     }
+
     /**
      * Remote function to backup the given file
-     * @param filename the name of the file to be backed up
+     *
+     * @param filename  the name of the file to be backed up
      * @param repDegree the degree of replication for this file
      */
     @Override
-    public int backup(String filename, int repDegree) throws RemoteException, IOException{
+    public int backup(String filename, int repDegree) throws RemoteException, IOException {
         File file = new File(filename);
 
-        if(!file.exists())
-        {
+        if (!file.exists()) {
             return -1;
         }
 
         String id = FileChunker.getFileChecksum(file);
 
-        this.disk.addFilename(filename,id);
+        this.disk.addFilename(filename, id);
 
         //
         int part = 0;
@@ -281,7 +271,7 @@ public class BackupService implements RMI{
 
         int size;
         while ((size = inputStream.read(chunk)) > 0) {
-            byte[] currChunk = Arrays.copyOfRange(chunk,0,size);
+            byte[] currChunk = Arrays.copyOfRange(chunk, 0, size);
             Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
             Thread thread = new Thread(new BackupChunk(newChunk));
             thread.start();
@@ -289,7 +279,7 @@ public class BackupService implements RMI{
         inputStream.close();
         f.close();
 
-        this.getDisk().addNumberOfChunks(id,part);
+        this.getDisk().addNumberOfChunks(id, part);
 
 
         return 0;
@@ -298,6 +288,7 @@ public class BackupService implements RMI{
 
     /**
      * Remote function to restore file
+     *
      * @param filename
      * @throws RemoteException
      * @throws FileNotFoundException
@@ -305,28 +296,27 @@ public class BackupService implements RMI{
      * @throws IOException
      */
     @Override
-    public int restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
+    public int restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException {
 
         String id = this.getDisk().getId(filename);
 
-        if(id == null)
+        if (id == null)
             return -1;
 
         int numberOfChunks = this.getDisk().getNumberOfChunks(id);
 
         ArrayList<Integer> array = new ArrayList<>();
 
-        for(int i = 0; i < numberOfChunks;i++)
+        for (int i = 0; i < numberOfChunks; i++)
             array.add(i);
 
-        getChannelsHandler().waitingForChunks.put(id,array);
+        getChannelsHandler().waitingForChunks.put(id, array);
 
         //locking semaphore to wait for all chunks to be restored
         sem.acquire();
 
-        for(int i = 0; i < numberOfChunks; i++)
-        {
-            Chunk newChunk = new Chunk(id,i,(new byte[0]),0);
+        for (int i = 0; i < numberOfChunks; i++) {
+            Chunk newChunk = new Chunk(id, i, (new byte[0]), 0);
             Thread thread = new Thread(new GetChunk(newChunk));
             thread.start();
         }
@@ -337,7 +327,7 @@ public class BackupService implements RMI{
 
         File file = new File(id);
 
-        if(file.canWrite())
+        if (file.canWrite())
             file.renameTo(new File(filename));
 
         return 0;
@@ -345,15 +335,16 @@ public class BackupService implements RMI{
 
     /**
      * Remote function to delete a file
+     *
      * @param filename of the file
      * @throws RemoteException
      */
     @Override
-    public int delete(String filename)throws RemoteException{
+    public int delete(String filename) throws RemoteException {
 
         String id = this.getDisk().getId(filename);
 
-        if(id == null)
+        if (id == null)
             return -1;
 
         (new DeleteFile(id)).run();
@@ -365,27 +356,27 @@ public class BackupService implements RMI{
 
     /**
      * Remote function to reclaim given file
+     *
      * @param space to reclaim
      * @throws RemoteException
      */
     @Override
-    public int reclaim(int space)throws RemoteException{
-        disk.freeSpace(space,false);
+    public int reclaim(int space) throws RemoteException {
+        disk.freeSpace(space, false);
         return 0;
     }
 
     @Override
-    public int backupEnh(String filename, int repDegree) throws RemoteException, IOException{
+    public int backupEnh(String filename, int repDegree) throws RemoteException, IOException {
         File file = new File(filename);
 
-        if(!file.exists())
-        {
+        if (!file.exists()) {
             return -1;
         }
 
         String id = FileChunker.getFileChecksum(file);
 
-        this.disk.addFilename(filename,id);
+        this.disk.addFilename(filename, id);
 
         //
         int part = 0;
@@ -396,33 +387,36 @@ public class BackupService implements RMI{
 
         int size;
         while ((size = inputStream.read(chunk)) > 0) {
-            byte[] currChunk = Arrays.copyOfRange(chunk,0,size);
+            byte[] currChunk = Arrays.copyOfRange(chunk, 0, size);
             Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
-            Thread thread = new Thread(new BackupChunk(newChunk,true));
+            Thread thread = new Thread(new BackupChunk(newChunk, true));
             thread.start();
         }
         inputStream.close();
         f.close();
 
-        this.getDisk().addNumberOfChunks(id,part);
+        this.getDisk().addNumberOfChunks(id, part);
 
 
         return 0;
 
     }
+
     /**
      * Enhanced remote function to reclaim given file
+     *
      * @param space to reclaim
      * @throws RemoteException
      */
     @Override
-    public int reclaimEnh(int space)throws RemoteException{
-        new Thread(() -> disk.freeSpace(space,true)).start();
+    public int reclaimEnh(int space) throws RemoteException {
+        new Thread(() -> disk.freeSpace(space, true)).start();
         return 0;
     }
 
     /**
-     *Enhaced version of restore function
+     * Enhaced version of restore function
+     *
      * @param filename of file to be restored
      * @return -1 if errors have ocurred
      * @throws RemoteException
@@ -431,20 +425,20 @@ public class BackupService implements RMI{
      * @throws IOException
      */
     @Override
-    public int restoreEnh(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException{
+    public int restoreEnh(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException {
         String id = this.getDisk().getId(filename);
 
-        if(id == null)
+        if (id == null)
             return -1;
 
         int numberOfChunks = this.getDisk().getNumberOfChunks(id);
 
         ArrayList<Integer> array = new ArrayList<>();
 
-        for(int i = 0; i < numberOfChunks;i++)
+        for (int i = 0; i < numberOfChunks; i++)
             array.add(i);
 
-        getChannelsHandler().waitingForChunks.put(id,array);
+        getChannelsHandler().waitingForChunks.put(id, array);
 
         return 0;
     }

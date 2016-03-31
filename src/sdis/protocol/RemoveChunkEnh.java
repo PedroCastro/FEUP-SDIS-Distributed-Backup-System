@@ -9,7 +9,7 @@ import java.util.HashMap;
 /**
  * Enhanced remove chunk protocol
  */
-public class RemoveChunkEnh implements BackupProtocol, Runnable  {
+public class RemoveChunkEnh implements BackupProtocol, Runnable {
     /**
      * Chunk that was removed
      */
@@ -29,9 +29,6 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable  {
      */
     @Override
     public void run() {
-
-
-
         int currentWaitingTime = 500;
         int currentAttempt = 1;
         boolean finished = false;
@@ -40,30 +37,28 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable  {
 
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
         outerLoop:
-        while(!finished)
-        {
+        while (!finished) {
 
-            if(chunk.getState().isSafe()){
+            if (chunk.getState().isSafe()) {
                 System.out.println("safe");
                 break outerLoop;
             }
 
-            if(currentAttempt > 3)
-            {
+            if (currentAttempt > 3) {
                 System.out.println("Couldnt remove chunk Bigger - " + chunk.getChunkNo() + "/" + chunk.getState().getReplicationDegree());
                 return;
             }
 
-            if(!BackupService.getInstance().getChannelsHandler().putChunkListener.containsKey(chunk.getFileID()))
-                BackupService.getInstance().getChannelsHandler().putChunkListener.put(chunk.getFileID(),new HashMap<>());
+            if (!BackupService.getInstance().getChannelsHandler().putChunkListener.containsKey(chunk.getFileID()))
+                BackupService.getInstance().getChannelsHandler().putChunkListener.put(chunk.getFileID(), new HashMap<>());
 
-            BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).put(chunk.getChunkNo(),0);
+            BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).put(chunk.getChunkNo(), 0);
 
             //initiate stored too
-            if(!BackupService.getInstance().getChannelsHandler().storedMessagesReceived.containsKey(chunk.getFileID()))
-                BackupService.getInstance().getChannelsHandler().storedMessagesReceived.put(chunk.getFileID(),new HashMap<>());
+            if (!BackupService.getInstance().getChannelsHandler().storedMessagesReceived.containsKey(chunk.getFileID()))
+                BackupService.getInstance().getChannelsHandler().storedMessagesReceived.put(chunk.getFileID(), new HashMap<>());
 
-            BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(),0);
+            BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(), 0);
 
             currentAttempt++;
             try {
@@ -72,32 +67,31 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable  {
                 e.printStackTrace();
             }
             int numberOfPutChunks = 0;
-            if(BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
-                 numberOfPutChunks = Integer.valueOf(BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).get(chunk.getChunkNo()));
-            else  return;
-            if(numberOfPutChunks > 0)
-            {
+            if (BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
+                numberOfPutChunks = Integer.valueOf(BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).get(chunk.getChunkNo()));
+            else return;
+            if (numberOfPutChunks > 0) {
                 System.out.println("Entra aqui :" + numberOfPutChunks);
                 int attempt = 1;
-                while(attempt < 3){
+                while (attempt < 3) {
                     try {
                         Thread.sleep(currentWaitingTime);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    if(BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).containsKey(chunk.getChunkNo())) {
+                    if (BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).containsKey(chunk.getChunkNo())) {
                         if (BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).get(chunk.getChunkNo()) > 0) {
                             System.out.println("stored messages : " + BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).get(chunk.getChunkNo()));
                             break outerLoop;
                         }
                     } else return;
                     attempt++;
-                    BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(),0);
+                    BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(), 0);
                 }
             }
 
         }
-        System.out.println("Enhaced removal of chunk "+ chunk.getFileID() + " - "+ chunk.getChunkNo());
+        System.out.println("Enhaced removal of chunk " + chunk.getFileID() + " - " + chunk.getChunkNo());
         BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).remove(chunk.getChunkNo());
         BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).remove(chunk.getChunkNo());
 

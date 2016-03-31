@@ -5,9 +5,6 @@ import sdis.protocol.RemoveChunk;
 import sdis.protocol.RemoveChunkEnh;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,32 +18,27 @@ public class Disk implements Serializable {
      * Serial version of Disk
      */
     private static final long serialVersionUID = 8516322467343602642L;
-
+    /**
+     * HashMap to be able to retrieve the id from the filename
+     */
+    public Map<String, String> filenames;
+    /**
+     * HashMap to be able to retrieve the number of chunks of a file
+     */
+    public Map<String, Integer> filesizes;
     /**
      * Capacity bytes of the disk
      */
     private int capacityBytes;
-
     /**
      * Used bytes of the disk
      */
     private int usedBytes;
-
     /**
      * Map with all files and chunks saved as well as their state
      * <FileId, <ChunkNo, ChunkState>>
      */
-    private ConcurrentHashMap<String, ConcurrentHashMap <Integer, ChunkState>> files;
-
-    /**
-     *  HashMap to be able to retrieve the id from the filename
-     */
-    public Map<String,String> filenames;
-
-    /**
-     *  HashMap to be able to retrieve the number of chunks of a file
-     */
-    public Map<String,Integer> filesizes;
+    private ConcurrentHashMap<String, ConcurrentHashMap<Integer, ChunkState>> files;
 
     /**
      * Constructor of Disk
@@ -56,7 +48,7 @@ public class Disk implements Serializable {
     public Disk(int capacity) {
         this.capacityBytes = capacity;
         this.usedBytes = 0;
-        this.files = new ConcurrentHashMap <>();
+        this.files = new ConcurrentHashMap<>();
         this.filenames = new HashMap<>();
         this.filesizes = new HashMap<>();
     }
@@ -68,6 +60,18 @@ public class Disk implements Serializable {
      */
     public synchronized int getCapacity() {
         return capacityBytes;
+    }
+
+    /**
+     * Set the capacity of the disk
+     *
+     * @param bytes number of bytes of the capacity
+     */
+    public synchronized void setCapacity(final int bytes) {
+        capacityBytes = bytes;
+
+        // Save the disk
+        this.saveDisk();
     }
 
     /**
@@ -101,18 +105,6 @@ public class Disk implements Serializable {
     }
 
     /**
-     * Set the capacity of the disk
-     *
-     * @param bytes number of bytes of the capacity
-     */
-    public synchronized void setCapacity(final int bytes) {
-        capacityBytes = bytes;
-
-        // Save the disk
-        this.saveDisk();
-    }
-
-    /**
      * Get a chunk from the disk
      *
      * @param fileHash    file hash of the chunk
@@ -127,7 +119,7 @@ public class Disk implements Serializable {
         ChunkState state = files.get(fileHash).get(chunkNumber);
 
         // Get chunk from the disk
-        File chunkFile = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
+        File chunkFile = new File(BackupService.getInstance().getServerId().toString() + "data" + File.separator + fileHash + File.separator + chunkNumber + ".bin");
         byte[] data = new byte[(int) chunkFile.length()];
         try {
             FileInputStream fis = new FileInputStream(chunkFile);
@@ -170,11 +162,15 @@ public class Disk implements Serializable {
         return files.get(fileHash).containsKey(chunkNumber);
     }
 
-    public synchronized void saveToFile(final Chunk chunk)
-    {
+    /**
+     * File a chunk to a file
+     *
+     * @param chunk chunk to be saved
+     */
+    public synchronized void saveToFile(final Chunk chunk) {
         try {
-            RandomAccessFile  file = new RandomAccessFile(chunk.getFileID(), "rw");
-            file.seek(FileChunker.getMaxSizeChunk()*chunk.getChunkNo());
+            RandomAccessFile file = new RandomAccessFile(chunk.getFileID(), "rw");
+            file.seek(FileChunker.getMaxSizeChunk() * chunk.getChunkNo());
             file.write(chunk.getData());
             file.close();
         } catch (IOException e) {
@@ -184,6 +180,7 @@ public class Disk implements Serializable {
 
     /**
      * Save a chunk to the disk
+     *
      * @param chunk to be added
      */
     public synchronized boolean saveChunk(final Chunk chunk) {
@@ -199,7 +196,7 @@ public class Disk implements Serializable {
         // Save chunk in the disk
         try {
 
-            File dir = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + chunk.getFileID());
+            File dir = new File(BackupService.getInstance().getServerId().toString() + "data" + File.separator + chunk.getFileID());
 
             File chunkFile = new File(dir.toString() + File.separator + chunk.getChunkNo() + ".bin");
             if (!dir.exists()) {
@@ -259,7 +256,7 @@ public class Disk implements Serializable {
      */
     public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
         Chunk chunk = getChunk(fileHash, chunkNumber);
-        if(chunk != null)
+        if (chunk != null)
             return removeChunk(getChunk(fileHash, chunkNumber));
         else return true;
     }
@@ -283,11 +280,11 @@ public class Disk implements Serializable {
         if (!hasChunk(chunk.getFileID(), chunk.getChunkNo()))
             return false;
 
-        File chunkFile = new File(BackupService.getInstance().getServerId().toString()+"data" + File.separator + chunk.getFileID()+ File.separator + chunk.getChunkNo() + ".bin");
+        File chunkFile = new File(BackupService.getInstance().getServerId().toString() + "data" + File.separator + chunk.getFileID() + File.separator + chunk.getChunkNo() + ".bin");
         System.gc();
 
         if (!chunkFile.delete())
-                return false;
+            return false;
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
@@ -302,7 +299,7 @@ public class Disk implements Serializable {
         files.get(chunk.getFileID()).remove(chunk.getChunkNo());
 
         //Remove file from file's map is no more chunks exist
-        if(files.get(chunk.getFileID()).isEmpty())
+        if (files.get(chunk.getFileID()).isEmpty())
             files.remove(chunk.getFileID());
 
         // Save the disk
@@ -325,90 +322,94 @@ public class Disk implements Serializable {
 
     /**
      * Add the id of a file to hashtable with its filename as key
+     *
      * @param filename of the file
-     * @param id of the file
+     * @param id       of the file
      */
-    public synchronized void addFilename(String filename, String id){
-        filenames.put(filename,id);
+    public synchronized void addFilename(String filename, String id) {
+        filenames.put(filename, id);
         this.saveDisk();
     }
 
     /**
      * Remove filename from hashmap
+     *
      * @param filename to be removed
      */
-    public synchronized void removeFilename(String filename){
+    public synchronized void removeFilename(String filename) {
         filenames.remove(filename);
         this.saveDisk();
     }
 
     /**
      * Returns the id of the file with the given filename
+     *
      * @param filename of the file
      * @return id of the file
      */
-    public synchronized String getId(String filename){
+    public synchronized String getId(String filename) {
         return filenames.get(filename);
     }
 
     /**
      * Add the number of chunks of a given file
-     * @param id of the file
+     *
+     * @param id   of the file
      * @param size - number of chunks of the file
      */
-    public synchronized void addNumberOfChunks(String id, int size)
-    {
-        filesizes.put(id,size);
+    public synchronized void addNumberOfChunks(String id, int size) {
+        filesizes.put(id, size);
         this.saveDisk();
     }
 
     /**
      * Returns the number of chunks of a file
+     *
      * @param id of the file
      * @return number of chunks of the file
      */
-    public synchronized int getNumberOfChunks(String id){
+    public synchronized int getNumberOfChunks(String id) {
         return filesizes.get(id);
     }
 
     /**
      * Saves the current Disk to Disk File
      */
-    public synchronized void saveDisk(){
+    public synchronized void saveDisk() {
         BackupService.getInstance().saveDisk();
     }
 
     /**
      * Frees the given space in the disk
+     *
      * @param space to be free
      * @return true if the given space was made free, false if not
      */
-    public synchronized boolean freeSpace(int space,boolean enh){
-        if(space > usedBytes)
+    public synchronized boolean freeSpace(int space, boolean enh) {
+        if (space > usedBytes)
             return false;
 
         int minFreeSpace = usedBytes - space;
 
         outerLoop:
-        for(ConcurrentHashMap .Entry<String, ConcurrentHashMap <Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-            for(ConcurrentHashMap .Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+        for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+            for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
             {
-                Chunk chunk = getChunk(filesEntry.getKey(),chunksEntry.getKey());
+                Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
                 ChunkState state = chunksEntry.getValue();
-                if(state.getReplicationDegree()>state.getMinReplicationDegree()) {
-                    if(!enh) {
+                if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
+                    if (!enh) {
                         if (removeChunk(chunk))
                             (new RemoveChunk(chunk)).run();
-                    }
-                    else(new RemoveChunkEnh(chunk)).run();
+                    } else (new RemoveChunkEnh(chunk)).run();
                 }
-                if(usedBytes <= minFreeSpace)
+                if (usedBytes <= minFreeSpace)
                     break outerLoop;
             }
         int tries = 1;
         outerLoop2:
-        while(usedBytes > minFreeSpace) {
-            if(tries > 3)
+        while (usedBytes > minFreeSpace) {
+            if (tries > 3)
                 return false;
             for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
                 for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
@@ -426,7 +427,7 @@ public class Disk implements Serializable {
         return true;
     }
 
-    public synchronized void printInfo(){
+    public synchronized void printInfo() {
         System.out.println("Disk - f:" + this.getFreeBytes() + "b / u:" + this.getUsedBytes() + "b / c:" + this.getCapacity() + "b");
     }
 }
