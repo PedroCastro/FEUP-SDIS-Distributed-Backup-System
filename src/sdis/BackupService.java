@@ -109,6 +109,7 @@ public class BackupService implements RMI {
         // Start the service
         instance.startService();
 
+
         instance.reclaimEnh(instance.disk.getUsedBytes());
         try {
             Thread.sleep(100000000);
@@ -362,8 +363,7 @@ public class BackupService implements RMI {
      */
     @Override
     public int reclaim(int space) throws RemoteException {
-        disk.freeSpace(space, false);
-        return 0;
+        return disk.freeSpace(space, false) ? 0 : -1;
     }
 
     @Override
