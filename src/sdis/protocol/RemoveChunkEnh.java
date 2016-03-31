@@ -16,12 +16,18 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
     private final Chunk chunk;
 
     /**
+     * MinimalFreeSpace
+     */
+    private final int minFreeSpace;
+
+    /**
      * Constructor of RemoveChunk
      *
      * @param chunk chunk that was removed
      */
-    public RemoveChunkEnh(final Chunk chunk) {
+    public RemoveChunkEnh(final Chunk chunk, final int minFreeSpace) {
         this.chunk = chunk;
+        this.minFreeSpace = minFreeSpace;
     }
 
     /**
@@ -29,12 +35,54 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
      */
     @Override
     public void run() {
-        int currentWaitingTime = 500;
+
+
+
+        int waitingForStoredTime = 500;
         int currentAttempt = 1;
-        boolean finished = false;
 
         byte[] message = getMessage();
 
+        byte[] putChunkMessage = (new BackupChunk(chunk, false)).getMessage();
+
+        //initiate storing listening
+        if (!BackupService.getInstance().getChannelsHandler().storedMessagesReceived.containsKey(chunk.getFileID()))
+            BackupService.getInstance().getChannelsHandler().storedMessagesReceived.put(chunk.getFileID(), new HashMap<>());
+
+        BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(), 0);
+
+        BackupService.getInstance().getChannelsHandler().sendMessage(putChunkMessage, ChannelType.MDB);
+
+        while (currentAttempt <= 3) {
+
+            currentAttempt++;
+
+            //wait for stored messages
+            try {
+                Thread.sleep(waitingForStoredTime);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            int storedListen = 0;
+            if(BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
+                storedListen = BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).get(chunk.getChunkNo());
+
+
+            System.out.println("Stored Listen : " + storedListen + " of " + chunk.getChunkNo());
+            if (storedListen >= chunk.getState().getMinReplicationDegree()) {
+                System.out.println("Enhaced removal of chunk " + chunk.getFileID() + " - " + chunk.getChunkNo());
+                BackupService.getInstance().getDisk().removeChunk(chunk);
+                BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
+                BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).remove(chunk.getChunkNo());
+                return;
+            }
+        }
+
+        System.out.println("Couldnt remove chunk");
+        BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).remove(chunk.getChunkNo());
+
+
+        /*
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
         outerLoop:
         while (!finished) {
@@ -96,6 +144,8 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
         BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).remove(chunk.getChunkNo());
 
         BackupService.getInstance().getDisk().removeChunk(chunk);
+
+        */
     }
 
     @Override
@@ -110,4 +160,5 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
                         + BackupProtocol.CRLF;
         return header.getBytes();
     }
+
 }

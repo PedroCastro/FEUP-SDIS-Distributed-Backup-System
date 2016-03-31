@@ -8,11 +8,14 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 /**
  * Disk
  */
 public class Disk implements Serializable {
+
+    Semaphore sem = new Semaphore(1);
 
     /**
      * Serial version of Disk
@@ -391,39 +394,48 @@ public class Disk implements Serializable {
 
         int minFreeSpace = usedBytes - space;
 
-        outerLoop:
-        for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-            for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
-            {
-                Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
-                ChunkState state = chunksEntry.getValue();
-                if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
-                    if (!enh) {
-                        if (removeChunk(chunk))
-                            (new RemoveChunk(chunk)).run();
-                    } else (new RemoveChunkEnh(chunk)).run();
-                }
-                if (usedBytes <= minFreeSpace)
-                    break outerLoop;
+        //So it can run simultaneous
+        Thread thread = new Thread(){
+            public void run(){
+                outerLoop:
+                for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+                    for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+                    {
+                        Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
+                        ChunkState state = chunksEntry.getValue();
+                        if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
+                            if (!enh) {
+                                if (removeChunk(chunk))
+                                    (new RemoveChunk(chunk)).run();
+                            } else
+                            {
+                                (new RemoveChunkEnh(chunk, minFreeSpace)).run();
+                            }
+                        }
+                        if (usedBytes <= minFreeSpace)
+                            break outerLoop;
+                    }
+                outerLoop2:
+                for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+                    for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+                    {
+                        Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
+                        if (!enh) {
+                            if (removeChunk(chunk))
+                                (new RemoveChunk(chunk)).run();
+                        } else
+                        {
+                            (new RemoveChunkEnh(chunk, minFreeSpace)).run();
+                        }
+                        if (usedBytes <= minFreeSpace)
+                            break outerLoop2;
+                    }
             }
-        int tries = 1;
-        outerLoop2:
-        while (usedBytes > minFreeSpace) {
-            if (tries > 3)
-                return false;
-            for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-                for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
-                {
-                    Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
-                    if (!enh) {
-                        if (removeChunk(chunk))
-                            (new RemoveChunk(chunk)).run();
-                    } else (new RemoveChunkEnh(chunk)).run();
-                    if (usedBytes <= minFreeSpace)
-                        break outerLoop2;
-                }
-            tries++;
-        }
+        };
+
+        thread.start();
+
+
         return true;
     }
 

@@ -56,7 +56,6 @@ public class ChannelsHandler {
     /**
      * Map with number of putchunks for chunk
      */
-    public Map<String, Map<Integer, Integer>> putChunkListener;
     private Map<String, Map<Integer, Integer>> storedListened;
 
     /**
@@ -67,7 +66,6 @@ public class ChannelsHandler {
         this.mirrorDevices = new HashMap<>();
         this.storedMessagesReceived = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
-        this.putChunkListener = new HashMap<>();
         this.chunksForRestore = new HashMap<>();
         this.chunksBackupAgain = new HashMap<>();
         this.storedListened = new HashMap<>();
@@ -275,16 +273,9 @@ public class ChannelsHandler {
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
         if (chunk != null) {
             ChunkState chunkState = chunk.getState();
-            /*System.out.println("Set of ("+chunkNumber+") : " + chunkState.mirrorDevices.toString());
-            if(chunkState.mirrorDevices.contains(Integer.valueOf(3)))
-                System.out.println("Tem um 3");
-            else System.out.println("Nao tem um 3");
-            System.out.println("Replicas antes : " + chunkState.getReplicationDegree());*/
+            System.out.println("antes" + chunkState.getReplicationDegree() + "/" + chunk.getChunkNo());
             chunkState.increaseReplicas(Integer.parseInt(deviceId));
-            //System.out.println("Replicas depois : " + chunkState.getReplicationDegree());
-
-            //System.out.println(chunkState == chunk.getState());
-
+            System.out.println("depois" + chunkState.getReplicationDegree() + "/" + chunk.getChunkNo());
             BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
     }
@@ -302,9 +293,6 @@ public class ChannelsHandler {
         if (isListeningStoredConfirmations(fileId, chunkNumber)) {
             return;
         }
-
-        if (addPutChunkToListener(fileId, chunkNumber))
-            return;
 
         if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
@@ -351,9 +339,6 @@ public class ChannelsHandler {
             return;
         }
 
-        if (addPutChunkToListener(fileId, chunkNumber))
-            return;
-
         if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
 
@@ -369,6 +354,8 @@ public class ChannelsHandler {
 
         // Backup the received chunk
         Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
+
+        chunk.getState().increaseReplicas(Integer.parseInt(BackupService.getInstance().getServerId()));
 
         // Check if chunk has been stored already
         if (BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber)) {
@@ -483,6 +470,8 @@ public class ChannelsHandler {
         if (chunk.getState().isSafe())
             return;
 
+        System.out.println("fodeu - " + chunk.getState().getReplicationDegree());
+
         BackupRemovedChunk backupRemovedChunk = new BackupRemovedChunk(chunk);
 
         final Thread thread = new Thread(backupRemovedChunk);
@@ -583,14 +572,5 @@ public class ChannelsHandler {
 
         Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         return fileReplicasCount.containsKey(chunkNumber);
-    }
-
-    public synchronized boolean addPutChunkToListener(String id, int chunkNumber) {
-        if (!putChunkListener.containsKey(id))
-            return false;
-        if (!putChunkListener.get(id).containsKey(chunkNumber))
-            return false;
-        putChunkListener.get(id).put(chunkNumber, putChunkListener.get(id).get(chunkNumber) + 1);
-        return true;
     }
 }
