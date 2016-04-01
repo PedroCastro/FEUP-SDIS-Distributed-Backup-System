@@ -298,9 +298,7 @@ public class ChannelsHandler {
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
         if (chunk != null) {
             ChunkState chunkState = chunk.getState();
-            System.out.println("antes" + chunkState.getReplicationDegree() + "/" + chunk.getChunkNo());
             chunkState.increaseReplicas(Integer.parseInt(deviceId));
-            System.out.println("depois" + chunkState.getReplicationDegree() + "/" + chunk.getChunkNo());
             BackupService.getInstance().getDisk().updateChunkState(chunk);
         }
     }

@@ -218,7 +218,7 @@ public class BackupService implements RMI {
             } catch (ExportException e) {
                 System.out.println("Registetry is running");
             }
-            Registry registry = LocateRegistry.getRegistry();
+            Registry registry = LocateRegistry.getRegistry(1099);
             try {
                 registry.bind(this.getServerId(), rmiService);
             } catch (AlreadyBoundException e) {
