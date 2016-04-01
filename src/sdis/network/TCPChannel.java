@@ -1,15 +1,17 @@
 package sdis.network;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.DatagramPacket;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketTimeoutException;
 
 /**
- * Multicast Connection
+ * TCP Connection
  */
-public class MulticastChannel implements Channel {
+public class TCPChannel implements Channel {
 
     /**
      * Multicast Channel type
@@ -27,9 +29,9 @@ public class MulticastChannel implements Channel {
     private final int port;
 
     /**
-     * Multicast socket
+     * Server socket
      */
-    private final MulticastSocket multiCastSocket;
+    private final ServerSocket channelSocket;
 
     /**
      * Buffer where the data received will be written to
@@ -37,26 +39,18 @@ public class MulticastChannel implements Channel {
     private byte[] buffer;
 
     /**
-     * Data packet to received the data from the channel
-     */
-    private DatagramPacket dataPacket;
-
-    /**
      * Constructor of MulticastChannel
      *
-     * @param type    type of the multicast channel
-     * @param address address of the multicast channel
-     * @param port    port of the multicast channel
+     * @param type type of the multicast channel
      * @throws IOException error when creating multicast socket
      */
-    public MulticastChannel(final ChannelType type, final InetAddress address, final int port) throws IOException {
+    public TCPChannel(final ChannelType type) throws IOException {
         this.type = type;
-        this.address = address;
-        this.port = port;
 
-        // Join the multicast channel
-        this.multiCastSocket = new MulticastSocket(port);
-        this.multiCastSocket.joinGroup(address);
+        // Create server socket
+        this.channelSocket = new ServerSocket(0);
+        this.address = channelSocket.getInetAddress();
+        this.port = channelSocket.getLocalPort();
     }
 
     /**
@@ -94,11 +88,12 @@ public class MulticastChannel implements Channel {
     public Object read() {
         // Cached items
         this.buffer = new byte[MAX_SIZE_PACKET];
-        this.dataPacket = new DatagramPacket(buffer, buffer.length);
         try {
-            multiCastSocket.setSoTimeout(1000); // Wait one second to read data
-            multiCastSocket.receive(dataPacket);
-            return dataPacket;
+            channelSocket.setSoTimeout(1000); // Wait one second to read data
+            Socket socket = channelSocket.accept();
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            socket.getInputStream().read(buffer);
+            return buffer;
         } catch (SocketTimeoutException e) {
             return null;
         } catch (IOException e) {
@@ -108,30 +103,23 @@ public class MulticastChannel implements Channel {
     }
 
     /**
-     * Write a message to the multicast channel
+     * Write a message to the channel
      *
      * @param message message to be written
      * @return true if successful, false otherwise
      */
     public boolean write(final byte[] message) {
-        try {
-            multiCastSocket.send(new DatagramPacket(message, message.length, address, port));
-            return true;
-        } catch (IOException e) {
-            System.out.println(type + ": Error while writing. " + e.getMessage());
-            return false;
-        }
+        return true;
     }
 
     /**
-     * Close the multicast socket channel
+     * Close the tcp socket channel
      */
     public void close() {
         try {
-            multiCastSocket.leaveGroup(address);
+            channelSocket.close();
         } catch (IOException e) {
-            System.out.println(type + ": Error while leaving group. " + e.getMessage());
+            System.out.println(type + ": Error while closing tcp channel. " + e.getMessage());
         }
-        multiCastSocket.close();
     }
 }

@@ -5,6 +5,7 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
+import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -18,6 +19,21 @@ public class RestoreChunk implements BackupProtocol, Runnable {
     private final Chunk chunk;
 
     /**
+     * Enhancement boolean
+     */
+    private final boolean enhanced;
+
+    /**
+     * Address to send the restore chunk
+     */
+    private final InetAddress address;
+
+    /**
+     * Port to send the chunk (if enhanced)
+     */
+    private final int port;
+
+    /**
      * Flag to restore or not the chunk
      */
     private final AtomicBoolean restore;
@@ -26,9 +42,14 @@ public class RestoreChunk implements BackupProtocol, Runnable {
      * Constructor of BackupChunk
      *
      * @param chunk chunk to be backed up
+     * @param enhanced true if enhanced
+     * @param port port to send the chunk
      */
-    public RestoreChunk(final Chunk chunk) {
+    public RestoreChunk(final Chunk chunk, final boolean enhanced, final InetAddress address, final int port) {
         this.chunk = chunk;
+        this.enhanced = enhanced;
+        this.address = address;
+        this.port = port;
         this.restore = new AtomicBoolean(true);
     }
 
@@ -48,7 +69,10 @@ public class RestoreChunk implements BackupProtocol, Runnable {
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDR);
 
-        //System.out.println("Sent chunk to be restored ("+chunk.getChunkNo()+")");
+        // Directly connect to TCP server
+        if (enhanced) {
+
+        }
     }
 
     /**
@@ -59,9 +83,9 @@ public class RestoreChunk implements BackupProtocol, Runnable {
     }
 
     /**
-     * Get the backup chunk protocol message
+     * Get the restore chunk protocol message
      *
-     * @return backup chunk protocol message
+     * @return restore chunk protocol message
      */
     @Override
     public byte[] getMessage() {
@@ -73,6 +97,6 @@ public class RestoreChunk implements BackupProtocol, Runnable {
                         + chunk.getChunkNo()
                         + BackupProtocol.CRLF
                         + BackupProtocol.CRLF;
-        return Utilities.concatBytes(header.getBytes(), chunk.getData());
+        return (enhanced ? header.getBytes() : Utilities.concatBytes(header.getBytes(), chunk.getData()));
     }
 }

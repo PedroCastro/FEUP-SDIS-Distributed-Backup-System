@@ -25,15 +25,16 @@ public class BackupChunk implements BackupProtocol, Runnable {
     /**
      * Maximum Threads Running
      */
-    static Semaphore sem = new Semaphore(10);
+    private static Semaphore sem = new Semaphore(10);
     /**
      * Chunk to be backed up
      */
     private final Chunk chunk;
+
     /**
      * Enhancement boolean
      */
-    private boolean enhanced = false;
+    private boolean enhanced;
 
     /**
      * Constructor of BackupChunk
@@ -41,9 +42,15 @@ public class BackupChunk implements BackupProtocol, Runnable {
      * @param chunk chunk to be backed up
      */
     public BackupChunk(final Chunk chunk) {
-        this.chunk = chunk;
+        this(chunk, false);
     }
 
+    /**
+     * Constructor of BackupChunk
+     *
+     * @param chunk    chunk to be backed up
+     * @param enhanced true to use the enhanced protocol, false otherwise
+     */
     public BackupChunk(final Chunk chunk, boolean enhanced) {
         this.chunk = chunk;
         this.enhanced = enhanced;
@@ -81,7 +88,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
             }
 
             // Check number confirmations
-            int numberConfirmations = Integer.valueOf(BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo()));
+            int numberConfirmations = BackupService.getInstance().getChannelsHandler().getStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
             if (BackupService.getInstance().getDisk().hasChunk(chunk.getFileID(), chunk.getChunkNo()))
                 numberConfirmations++;
             if (numberConfirmations < chunk.getState().getMinReplicationDegree()) {
@@ -115,7 +122,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
     public byte[] getMessage() {
         String header =
                 BackupProtocol.PUTCHUNK_MESSAGE + " "
-                        + (enhanced ? BackupProtocol.ENHANCEMENT : BackupProtocol.VERSION) + " "
+                        + (enhanced ? BackupProtocol.VERSION_ENHANCEMENT : BackupProtocol.VERSION) + " "
                         + BackupService.getInstance().getServerId() + " "
                         + chunk.getFileID() + " "
                         + chunk.getChunkNo() + " "
