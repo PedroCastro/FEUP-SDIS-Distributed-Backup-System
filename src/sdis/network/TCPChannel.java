@@ -1,8 +1,6 @@
 package sdis.network;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -91,7 +89,6 @@ public class TCPChannel implements Channel {
         try {
             channelSocket.setSoTimeout(1000); // Wait one second to read data
             Socket socket = channelSocket.accept();
-            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             socket.getInputStream().read(buffer);
             return buffer;
         } catch (SocketTimeoutException e) {

@@ -147,15 +147,26 @@ public class ChannelsHandler {
                 System.out.println(channel.getType() + " is listening.");
 
                 while (BackupService.getInstance().isRunning.get()) {
-                    final DatagramPacket data = (DatagramPacket) channel.read();
-                    if (data == null)
-                        continue;
+                    if (channel.getType() == ChannelType.TDR) {
+                        final byte[] data = (byte[]) channel.read();
+                        if (data == null)
+                            continue;
 
-                    //System.out.println("Received " + data.getLength() + " bytes.");
+                        //System.out.println("Received " + data.getLength() + " bytes.");
 
-                    // Handle the received message
-                    new Thread(() -> handleMessage(data.getData(), data.getLength(), data.getAddress(), channel.getType())).start();
-                    //handleMessage(data, channel.getType());
+                        // Handle the received message
+                        new Thread(() -> handleMessage(data, data.length, null, channel.getType())).start();
+                    } else {
+                        final DatagramPacket data = (DatagramPacket) channel.read();
+                        if (data == null)
+                            continue;
+
+                        //System.out.println("Received " + data.getLength() + " bytes.");
+
+                        // Handle the received message
+                        new Thread(() -> handleMessage(data.getData(), data.getLength(), data.getAddress(), channel.getType())).start();
+                        //handleMessage(data, channel.getType());
+                    }
                 }
             }
         };
@@ -247,7 +258,7 @@ public class ChannelsHandler {
             }
         }
         // Multicast Data Restore Channel
-        else if (channel == ChannelType.MDR) {
+        else if (channel == ChannelType.MDR || channel == ChannelType.TDR) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
                     byte[] body = Utilities.extractBody(data, length);
