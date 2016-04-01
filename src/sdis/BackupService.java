@@ -3,6 +3,7 @@ package sdis;
 import sdis.network.ChannelType;
 import sdis.network.ChannelsHandler;
 import sdis.network.MulticastChannel;
+import sdis.network.TCPChannel;
 import sdis.protocol.BackupChunk;
 import sdis.protocol.DeleteFile;
 import sdis.protocol.GetChunk;
@@ -105,6 +106,7 @@ public class BackupService implements RMI {
         instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MC, InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
         instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MDB, InetAddress.getByName(args[3]), Integer.parseInt(args[4])));
         instance.channelsHandler.addChannel(new MulticastChannel(ChannelType.MDR, InetAddress.getByName(args[5]), Integer.parseInt(args[6])));
+        instance.channelsHandler.addChannel(new TCPChannel(ChannelType.TDR));
 
         // Start the service
         instance.startService();
@@ -439,6 +441,24 @@ public class BackupService implements RMI {
             array.add(i);
 
         getChannelsHandler().waitingForChunks.put(id, array);
+
+        //locking semaphore to wait for all chunks to be restored
+        sem.acquire();
+
+        for (int i = 0; i < numberOfChunks; i++) {
+            Chunk newChunk = new Chunk(id, i, (new byte[0]), 0);
+            Thread thread = new Thread(new GetChunk(newChunk, true, 9999)); // TODO replace with PORT
+            thread.start();
+        }
+
+        //waits to aquire the sem ->ends the restore of all files
+        sem.acquire();
+        sem.release();
+
+        File file = new File(id);
+
+        if (file.canWrite())
+            file.renameTo(new File(filename));
 
         return 0;
     }

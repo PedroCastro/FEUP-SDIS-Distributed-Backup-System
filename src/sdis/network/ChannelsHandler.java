@@ -10,6 +10,7 @@ import sdis.storage.ChunkState;
 import sdis.utils.Utilities;
 
 import java.net.DatagramPacket;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,10 +26,11 @@ public class ChannelsHandler {
      * <FileId, ChunkNo>
      */
     public final Map<String, ArrayList<Integer>> waitingForChunks;
+
     /**
-     * Map with all the multicast channels and correspondent thread
+     * Map with all the channels and correspondent thread
      */
-    private final Map<MulticastChannel, Thread> multicastChannels;
+    private final Map<Channel, Thread> channels;
     /**
      * Map to track the mirrors of the chunks of a file being sent
      * <FileId, <ChunkNo, ChunkState>>
@@ -61,8 +63,8 @@ public class ChannelsHandler {
     /**
      * Constructor of ChannelsHandler
      */
-    public ChannelsHandler(String serverId) {
-        this.multicastChannels = new HashMap<>();
+    public ChannelsHandler(final String serverId) {
+        this.channels = new HashMap<>();
         this.mirrorDevices = new HashMap<>();
         this.storedMessagesReceived = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
@@ -80,6 +82,7 @@ public class ChannelsHandler {
         listenChannel(getChannelByType(ChannelType.MC));
         listenChannel(getChannelByType(ChannelType.MDB));
         listenChannel(getChannelByType(ChannelType.MDR));
+        listenChannel(getChannelByType(ChannelType.TDR));
     }
 
     /**
@@ -87,7 +90,7 @@ public class ChannelsHandler {
      */
     public void stop() {
         // Close all multicast channels
-        for (final Map.Entry<MulticastChannel, Thread> entry : multicastChannels.entrySet()) {
+        for (final Map.Entry<Channel, Thread> entry : channels.entrySet()) {
             // Wait for thread to finish
             try {
                 entry.getValue().join();
@@ -95,7 +98,7 @@ public class ChannelsHandler {
             }
 
             // Close safely the channel
-            final MulticastChannel channel = entry.getKey();
+            final Channel channel = entry.getKey();
             System.out.println(channel.getType() + " has been closed.");
             channel.close();
         }
@@ -106,8 +109,8 @@ public class ChannelsHandler {
      *
      * @param channel channel to be added
      */
-    public void addChannel(final MulticastChannel channel) {
-        multicastChannels.put(channel, null);
+    public void addChannel(final Channel channel) {
+        channels.put(channel, null);
     }
 
     /**
@@ -115,49 +118,49 @@ public class ChannelsHandler {
      *
      * @param channel channel to be removed
      */
-    public void removeChannel(final MulticastChannel channel) {
-        multicastChannels.remove(channel);
+    public void removeChannel(final Channel channel) {
+        channels.remove(channel);
     }
 
     /**
-     * Get a multicast channel by its type
+     * Get a channel by its type
      *
      * @param type type of the channel
      * @return channel with that type
      */
-    private MulticastChannel getChannelByType(final ChannelType type) {
-        for (final MulticastChannel channel : multicastChannels.keySet())
+    private Channel getChannelByType(final ChannelType type) {
+        for (final Channel channel : channels.keySet())
             if (channel.getType() == type)
                 return channel;
         return null;
     }
 
     /**
-     * Start listening the a multicast channel
+     * Start listening a channel
      *
      * @param channel channel to listen to
      */
-    private void listenChannel(final MulticastChannel channel) {
-        final Thread mcChannelThread = new Thread() {
+    private void listenChannel(final Channel channel) {
+        final Thread channelThread = new Thread() {
             @Override
             public void run() {
                 System.out.println(channel.getType() + " is listening.");
 
                 while (BackupService.getInstance().isRunning.get()) {
-                    final DatagramPacket data = channel.read();
+                    final DatagramPacket data = (DatagramPacket) channel.read();
                     if (data == null)
                         continue;
 
                     //System.out.println("Received " + data.getLength() + " bytes.");
 
                     // Handle the received message
-                    new Thread(() -> handleMessage(data, channel.getType())).start();
+                    new Thread(() -> handleMessage(data.getData(), data.getLength(), data.getAddress(), channel.getType())).start();
                     //handleMessage(data, channel.getType());
                 }
             }
         };
-        mcChannelThread.start();
-        multicastChannels.put(channel, mcChannelThread);
+        channelThread.start();
+        channels.put(channel, channelThread);
     }
 
     /**
@@ -168,7 +171,7 @@ public class ChannelsHandler {
      * @return true if message was sent, false otherwise
      */
     public boolean sendMessage(final byte[] message, ChannelType channel) {
-        MulticastChannel messageChannel = getChannelByType(channel);
+        Channel messageChannel = getChannelByType(channel);
         if (channel == null)
             return false;
         return messageChannel.write(message);
@@ -183,11 +186,13 @@ public class ChannelsHandler {
     /**
      * Handle a received message
      *
-     * @param packet  packet that was received
+     * @param data    data that was received
+     * @param length  length of the data received
+     * @param address address of the sender
      * @param channel channel that got the message
      */
-    private synchronized void handleMessage(final DatagramPacket packet, ChannelType channel) {
-        String[] header = Utilities.extractHeader(packet.getData());
+    private synchronized void handleMessage(final byte[] data, final int length, final InetAddress address, ChannelType channel) {
+        String[] header = Utilities.extractHeader(data);
         if (header == null || header.length <= 0)
             return;
 
@@ -204,8 +209,16 @@ public class ChannelsHandler {
                             header[BackupProtocol.SENDER_INDEX]);
                     break;
                 case BackupProtocol.GETCHUNK_MESSAGE:
-                    handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
-                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]));
+                    if (header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.VERSION_ENHANCEMENT)))
+                        handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
+                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                                address,
+                                Integer.parseInt(header[BackupProtocol.TCP_PORT]));
+                    else
+                        handleGetChunk(header[BackupProtocol.FILE_ID_INDEX],
+                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                                address,
+                                -1);
                     break;
                 case BackupProtocol.DELETE_MESSAGE:
                     handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX]);
@@ -221,14 +234,15 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDB) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(packet.getData(), packet.getLength());
-                    if (header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.ENHANCEMENT)))
+                    byte[] body = Utilities.extractBody(data, length);
+                    if (header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.VERSION_ENHANCEMENT)))
                         handlePutChunkEnh(header[BackupProtocol.FILE_ID_INDEX],
                                 Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                                 Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]), body);
-                    else handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
-                            Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
-                            Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]), body);
+                    else
+                        handlePutChunk(header[BackupProtocol.FILE_ID_INDEX],
+                                Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
+                                Integer.parseInt(header[BackupProtocol.REPLICATION_DEG_INDEX]), body);
                     break;
             }
         }
@@ -236,7 +250,7 @@ public class ChannelsHandler {
         else if (channel == ChannelType.MDR) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
-                    byte[] body = Utilities.extractBody(packet.getData(), packet.getLength());
+                    byte[] body = Utilities.extractBody(data, length);
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             body);
@@ -378,14 +392,16 @@ public class ChannelsHandler {
      *
      * @param fileId      file id of the chunk
      * @param chunkNumber number of the chunk
+     * @param address     address to send the file
+     * @param port        port to send the file (-1 to use non enhanced)
      */
-    private synchronized void handleGetChunk(final String fileId, final int chunkNumber) {
+    private synchronized void handleGetChunk(final String fileId, final int chunkNumber, final InetAddress address, final int port) {
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
         if (chunk == null)
             return;
 
 
-        RestoreChunk restoreChunk = new RestoreChunk(chunk);
+        RestoreChunk restoreChunk = new RestoreChunk(chunk, (port != -1), address, port);
 
         if (!chunksForRestore.containsKey(chunk.getFileID()))
             chunksForRestore.put(chunk.getFileID(), new HashMap<>());

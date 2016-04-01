@@ -19,7 +19,7 @@ public interface BackupProtocol {
     /**
      * Version of the enhaced protocol
      */
-    int ENHANCEMENT = 2;
+    int VERSION_ENHANCEMENT = 2;
 
     /**
      * End character
@@ -61,6 +61,11 @@ public interface BackupProtocol {
      * Replication degree field
      */
     int REPLICATION_DEG_INDEX = 5;
+
+    /**
+     * TCP port field
+     */
+    int TCP_PORT = 5;
 
     /**
      *

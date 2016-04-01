@@ -85,7 +85,7 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
         /*
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
         outerLoop:
-        while (!finished) {
+        while (true) {
 
             if (chunk.getState().isSafe()) {
                 System.out.println("safe");
@@ -116,7 +116,7 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
             }
             int numberOfPutChunks = 0;
             if (BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
-                numberOfPutChunks = Integer.valueOf(BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).get(chunk.getChunkNo()));
+                numberOfPutChunks = BackupService.getInstance().getChannelsHandler().putChunkListener.get(chunk.getFileID()).get(chunk.getChunkNo());
             else return;
             if (numberOfPutChunks > 0) {
                 System.out.println("Entra aqui :" + numberOfPutChunks);
@@ -132,7 +132,9 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
                             System.out.println("stored messages : " + BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).get(chunk.getChunkNo()));
                             break outerLoop;
                         }
-                    } else return;
+                    } else {
+                        return;
+                    }
                     attempt++;
                     BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).put(chunk.getChunkNo(), 0);
                 }
@@ -152,7 +154,7 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
     public byte[] getMessage() {
         String header =
                 BackupProtocol.REMOVED_MESSAGE + " "
-                        + BackupProtocol.VERSION + " "
+                        + BackupProtocol.VERSION_ENHANCEMENT + " "
                         + BackupService.getInstance().getServerId() + " "
                         + chunk.getFileID() + " "
                         + chunk.getChunkNo()
