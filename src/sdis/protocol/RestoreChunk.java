@@ -5,7 +5,10 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 import sdis.utils.Utilities;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -21,7 +24,7 @@ public class RestoreChunk implements BackupProtocol, Runnable {
     /**
      * Enhancement boolean
      */
-    private final boolean enhanced;
+    private boolean enhanced;
 
     /**
      * Address to send the restore chunk
@@ -71,7 +74,15 @@ public class RestoreChunk implements BackupProtocol, Runnable {
 
         // Directly connect to TCP server
         if (enhanced) {
-
+            try {
+                Socket clientSocket = new Socket(address, port);
+                DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                // Get the message this time with the body
+                enhanced = false;
+                message = getMessage();
+                outToServer.write(message);
+            } catch (IOException e) {
+            }
         }
     }
 
