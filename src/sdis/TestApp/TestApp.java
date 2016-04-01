@@ -23,7 +23,7 @@ public class TestApp {
         }
         RMI rmi;
         try {
-            Registry registry = LocateRegistry.getRegistry(null);
+            Registry registry = LocateRegistry.getRegistry(1099);
 
             rmi = (RMI) registry.lookup(args[0]);
         } catch (Exception e) {
