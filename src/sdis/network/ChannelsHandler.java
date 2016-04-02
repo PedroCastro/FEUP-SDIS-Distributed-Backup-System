@@ -447,6 +447,10 @@ public class ChannelsHandler {
             }
         }
 
+        // Check data length
+        if (data.length <= 0)
+            return;
+
         // Check if we were expecting the chunk to come
         if (!waitingForChunks.containsKey(fileId))
             return;
