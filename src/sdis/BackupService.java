@@ -241,20 +241,14 @@ public class BackupService implements RMI {
     }
 
     /**
-     * rmi testing func
-     */
-    public String test() {
-        return "yey" + this.getServerId();
-    }
-
-    /**
      * Remote function to backup the given file
      *
      * @param filename  the name of the file to be backed up
      * @param repDegree the degree of replication for this file
+     * @throws IOException
      */
     @Override
-    public int backup(String filename, int repDegree) throws RemoteException, IOException {
+    public int backup(String filename, int repDegree) throws IOException {
         File file = new File(filename);
 
         if (!file.exists()) {
@@ -292,14 +286,12 @@ public class BackupService implements RMI {
     /**
      * Remote function to restore file
      *
-     * @param filename
-     * @throws RemoteException
-     * @throws FileNotFoundException
+     * @param filename filename to be restored
      * @throws InterruptedException
      * @throws IOException
      */
     @Override
-    public int restore(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException {
+    public int restore(String filename) throws InterruptedException, IOException {
 
         String id = this.getDisk().getId(filename);
 
@@ -339,7 +331,7 @@ public class BackupService implements RMI {
     /**
      * Remote function to delete a file
      *
-     * @param filename of the file
+     * @param filename filename of the file
      * @throws RemoteException
      */
     @Override
@@ -360,7 +352,7 @@ public class BackupService implements RMI {
     /**
      * Remote function to reclaim given file
      *
-     * @param space to reclaim
+     * @param space space to reclaim
      * @throws RemoteException
      */
     @Override
@@ -368,8 +360,15 @@ public class BackupService implements RMI {
         return disk.freeSpace(space, false) ? 0 : -1;
     }
 
+    /**
+     * Remote function to backup the given file enhanced
+     *
+     * @param filename  the name of the file to be backed up
+     * @param repDegree the degree of replication for this file
+     * @throws IOException
+     */
     @Override
-    public int backupEnh(String filename, int repDegree) throws RemoteException, IOException {
+    public int backupEnh(String filename, int repDegree) throws IOException {
         File file = new File(filename);
 
         if (!file.exists()) {
@@ -407,7 +406,7 @@ public class BackupService implements RMI {
     /**
      * Enhanced remote function to reclaim given file
      *
-     * @param space to reclaim
+     * @param space space to reclaim
      * @throws RemoteException
      */
     @Override
@@ -417,10 +416,10 @@ public class BackupService implements RMI {
     }
 
     /**
-     * Enhaced version of restore function
+     * Enhanced version of restore function
      *
-     * @param filename of file to be restored
-     * @return -1 if errors have ocurred
+     * @param filename filename of file to be restored
+     * @return -1 if errors have occurred
      * @throws RemoteException
      * @throws FileNotFoundException
      * @throws InterruptedException

@@ -37,7 +37,6 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
     public void run() {
 
 
-
         int waitingForStoredTime = 500;
         int currentAttempt = 1;
 
@@ -64,7 +63,7 @@ public class RemoveChunkEnh implements BackupProtocol, Runnable {
                 e.printStackTrace();
             }
             int storedListen = 0;
-            if(BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
+            if (BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).containsKey(chunk.getChunkNo()))
                 storedListen = BackupService.getInstance().getChannelsHandler().storedMessagesReceived.get(chunk.getFileID()).get(chunk.getChunkNo());
 
 

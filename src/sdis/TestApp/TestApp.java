@@ -66,6 +66,15 @@ public class TestApp {
                 if (rmi.restore(args[2]) == -1)
                     System.out.println("File does not exist");
                 break;
+            case "RESTOREENH":
+                if (args.length < 3) {
+                    System.out.println("Please execute the backup service using the following format:");
+                    System.out.println("java TestApp <peer_ap> RESTOREENH <file_path>");
+                    return;
+                }
+                if (rmi.restoreEnh(args[2]) == -1)
+                    System.out.println("File does not exist");
+                break;
             case "DELETE":
                 if (args.length < 3) {
                     System.out.println("Please execute the backup service using the following format:");
