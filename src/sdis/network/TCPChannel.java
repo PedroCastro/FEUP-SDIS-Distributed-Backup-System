@@ -1,5 +1,6 @@
 package sdis.network;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -85,19 +86,20 @@ public class TCPChannel implements Channel {
      */
     public Object read() {
         // Cached items
-        this.buffer = new byte[MAX_SIZE_PACKET];
+        final ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
+        this.buffer = new byte[1];
         try {
             channelSocket.setSoTimeout(1000); // Wait one second to read data
             Socket socket = channelSocket.accept();
             int bytesRead;
-            int totalBytesRead = 0;
             do {
-                bytesRead = socket.getInputStream().read(buffer, totalBytesRead, buffer.length - totalBytesRead);
-                totalBytesRead += bytesRead;
+                bytesRead = socket.getInputStream().read(buffer);
+                if (bytesRead != -1)
+                    byteArray.write(buffer);
             } while (bytesRead != -1);
-            if (totalBytesRead == -1)
+            if (byteArray.size() <= 0)
                 return null;
-            return buffer;
+            return byteArray.toByteArray();
         } catch (SocketTimeoutException e) {
             return null;
         } catch (IOException e) {
