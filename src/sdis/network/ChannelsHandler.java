@@ -31,30 +31,36 @@ public class ChannelsHandler {
      * Map with all the channels and correspondent thread
      */
     private final Map<Channel, Thread> channels;
+
     /**
      * Map to track the mirrors of the chunks of a file being sent
      * <FileId, <ChunkNo, ChunkState>>
      */
     private final Map<String, Map<Integer, ChunkState>> mirrorDevices;
+
     /**
      * Map with chunks that will be restored
      * <FileId, <ChunkNo, RestoreThread>>
      */
     private final Map<String, Map<Integer, RestoreChunk>> chunksForRestore;
+
     /**
      * Chunks to backup again because they were removed and the count dropped below the desired
      * level of replication.
      * <FileId, <ChunkNo, BackupRemovedChunk>>
      */
     private final Map<String, Map<Integer, BackupRemovedChunk>> chunksBackupAgain;
+
     /**
      * The id of the server of this channels handler
      */
     private final String serverId;
+
     /**
      * Stored messages received
      */
     public Map<String, Map<Integer, Integer>> storedMessagesReceived;
+
     /**
      * Map with number of putchunks for chunk
      */

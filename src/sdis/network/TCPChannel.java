@@ -106,7 +106,7 @@ public class TCPChannel implements Channel {
      * @return true if successful, false otherwise
      */
     public boolean write(final byte[] message) {
-        return true;
+        return false;
     }
 
     /**

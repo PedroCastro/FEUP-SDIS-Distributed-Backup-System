@@ -15,8 +15,6 @@ import java.util.concurrent.Semaphore;
  */
 public class Disk implements Serializable {
 
-    Semaphore sem = new Semaphore(1);
-
     /**
      * Serial version of Disk
      */
@@ -29,6 +27,7 @@ public class Disk implements Serializable {
      * HashMap to be able to retrieve the number of chunks of a file
      */
     public Map<String, Integer> filesizes;
+    Semaphore sem = new Semaphore(1);
     /**
      * Capacity bytes of the disk
      */
@@ -395,8 +394,8 @@ public class Disk implements Serializable {
         int minFreeSpace = usedBytes - space;
 
         //So it can run simultaneous
-        Thread thread = new Thread(){
-            public void run(){
+        Thread thread = new Thread() {
+            public void run() {
                 outerLoop:
                 for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
                     for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
@@ -407,8 +406,7 @@ public class Disk implements Serializable {
                             if (!enh) {
                                 if (removeChunk(chunk))
                                     (new RemoveChunk(chunk)).run();
-                            } else
-                            {
+                            } else {
                                 (new RemoveChunkEnh(chunk, minFreeSpace)).run();
                             }
                         }
@@ -423,8 +421,7 @@ public class Disk implements Serializable {
                         if (!enh) {
                             if (removeChunk(chunk))
                                 (new RemoveChunk(chunk)).run();
-                        } else
-                        {
+                        } else {
                             (new RemoveChunkEnh(chunk, minFreeSpace)).run();
                         }
                         if (usedBytes <= minFreeSpace)
