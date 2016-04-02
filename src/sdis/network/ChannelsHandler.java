@@ -161,7 +161,7 @@ public class ChannelsHandler {
                         //System.out.println("Received " + data.getLength() + " bytes.");
 
                         // Handle the received message
-                        new Thread(() -> handleMessage(data, data.length, null, channel.getType())).start();
+                        new Thread(() ->    handleMessage(data, data.length, null, channel.getType())).start();
                     } else {
                         final DatagramPacket data = (DatagramPacket) channel.read();
                         if (data == null)
@@ -284,7 +284,6 @@ public class ChannelsHandler {
      * @param deviceId    device that has mirrored the chunk
      */
     private synchronized void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
-        // Add stored confirmation in case it is listening to confirmations
         addStoredConfirmation(fileId, chunkNumber, deviceId);
 
         if (storedMessagesReceived.containsKey(fileId))
@@ -299,6 +298,7 @@ public class ChannelsHandler {
             else this.storedListened.get(fileId).put(chunkNumber, 1);
         }
 
+        System.out.println("The Chunk " + chunkNumber + "has " + mirrorDevices.get(fileId).get(chunkNumber).getReplicationDegree());
 
         // Update replication degree if that is the case
         Chunk chunk = BackupService.getInstance().getDisk().getChunk(fileId, chunkNumber);
@@ -319,12 +319,10 @@ public class ChannelsHandler {
      */
     private synchronized void handlePutChunkEnh(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
         // A peer must never store the chunks of its own files.
-        if (isListeningStoredConfirmations(fileId, chunkNumber)) {
-            return;
-        }
 
         if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
+
 
         // Check if we were waiting the backup the chunk we are receiving
         if (chunksBackupAgain.containsKey(fileId)) {
@@ -364,13 +362,12 @@ public class ChannelsHandler {
      */
     private synchronized void handlePutChunk(final String fileId, final int chunkNumber, final int minReplicationDegree, final byte[] data) {
         // A peer must never store the chunks of its own files.
-        if (isListeningStoredConfirmations(fileId, chunkNumber)) {
-            return;
-        }
 
+        System.out.println("entra");
         if (BackupService.getInstance().getDisk().filenames.containsValue(fileId))
             return;
-
+        System.out.println("retardo");
+        addStoredConfirmation(fileId, chunkNumber, BackupService.getInstance().getServerId());
 
         // Check if we were waiting the backup the chunk we are receiving
         if (chunksBackupAgain.containsKey(fileId)) {
@@ -381,10 +378,13 @@ public class ChannelsHandler {
             }
         }
 
+
         // Backup the received chunk
         Chunk chunk = new Chunk(fileId, chunkNumber, data, minReplicationDegree);
 
         chunk.getState().increaseReplicas(Integer.parseInt(BackupService.getInstance().getServerId()));
+
+        System.out.println("why not save");
 
         // Check if chunk has been stored already
         if (BackupService.getInstance().getDisk().hasChunk(fileId, chunkNumber)) {
@@ -393,10 +393,13 @@ public class ChannelsHandler {
             return;
         }
 
+        System.out.println("wut?");
+
         // Save the chunk to the disk
         if (!BackupService.getInstance().getDisk().saveChunk(chunk))
             return;
 
+        System.out.println("WTF?");
         // Send stored message
         Thread thread = new Thread(new StoredChunk(chunk));
         thread.start();
@@ -494,14 +497,17 @@ public class ChannelsHandler {
         if (chunk == null)
             return;
 
+        decreaseStoredConfirmation(fileId,chunkNumber,deviceId);
         chunk.getState().decreaseReplicas(Integer.parseInt(deviceId));
         BackupService.getInstance().getDisk().updateChunkState(chunk);
+
+        System.out.println(chunkNumber + " with " + mirrorDevices.get(fileId).get(chunkNumber).getReplicationDegree() + " - removed");
 
         // Check replication level
         if (chunk.getState().isSafe())
             return;
 
-        System.out.println("fodeu - " + chunk.getState().getReplicationDegree());
+        System.out.println("sending");
 
         BackupRemovedChunk backupRemovedChunk = new BackupRemovedChunk(chunk);
 
@@ -545,13 +551,24 @@ public class ChannelsHandler {
      */
     private synchronized void addStoredConfirmation(final String fileId, final int chunkNumber, final String deviceId) {
         if (!mirrorDevices.containsKey(fileId))
-            return;
+            mirrorDevices.put(fileId,new HashMap<>());
 
         Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))
-            return;
+            fileReplicasCount.put(chunkNumber,new ChunkState(-1,0));
 
         fileReplicasCount.get(chunkNumber).increaseReplicas(Integer.parseInt(deviceId));
+    }
+
+    public synchronized void decreaseStoredConfirmation(final String fileId, final int chunkNumber, final String deviceId){
+        if(!mirrorDevices.containsKey(fileId))
+        {
+            mirrorDevices.put(fileId,new HashMap<>());
+        }
+        Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
+        if (!fileReplicasCount.containsKey(chunkNumber))
+            fileReplicasCount.put(chunkNumber,new ChunkState(-1,0));
+        fileReplicasCount.get(chunkNumber).decreaseReplicas(Integer.parseInt(deviceId));
     }
 
     /**

@@ -53,14 +53,6 @@ public interface RMI extends Remote {
     int backupEnh(String filename, int repDegree) throws IOException;
 
     /**
-     * Enhanced remote function to reclaim given file
-     *
-     * @param space space to reclaim
-     * @throws RemoteException
-     */
-    int reclaimEnh(int space) throws RemoteException;
-
-    /**
      * Enhanced version of restore function
      *
      * @param filename filename of file to be restored
