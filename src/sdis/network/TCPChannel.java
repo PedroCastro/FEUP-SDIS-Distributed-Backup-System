@@ -95,7 +95,6 @@ public class TCPChannel implements Channel {
                 bytesRead = socket.getInputStream().read(buffer, totalBytesRead, buffer.length - totalBytesRead);
                 totalBytesRead += bytesRead;
             } while (bytesRead != -1);
-            System.out.println("Bytes : " + totalBytesRead);
             if (totalBytesRead == -1)
                 return null;
             return buffer;
