@@ -89,6 +89,7 @@ public class ChunkState implements Serializable {
         if (!this.mirrorDevices.contains(deviceId))
             return;
         this.mirrorDevices.remove(deviceId);
-        this.replicationDegree--;
+        if(replicationDegree > 0)
+            this.replicationDegree--;
     }
 }

@@ -2,7 +2,6 @@ package sdis.storage;
 
 import sdis.BackupService;
 import sdis.protocol.RemoveChunk;
-import sdis.protocol.RemoveChunkEnh;
 
 import java.io.*;
 import java.util.HashMap;
@@ -32,6 +31,13 @@ public class Disk implements Serializable {
      * Capacity bytes of the disk
      */
     private int capacityBytes;
+
+    /**
+     * Map of all chunks on the system
+     */
+    private Map<String, Map<Integer, ChunkState>> mirrorDevices;
+
+
     /**
      * Used bytes of the disk
      */
@@ -53,6 +59,7 @@ public class Disk implements Serializable {
         this.files = new ConcurrentHashMap<>();
         this.filenames = new HashMap<>();
         this.filesizes = new HashMap<>();
+        this.mirrorDevices = new HashMap<>();
     }
 
     /**
@@ -270,6 +277,7 @@ public class Disk implements Serializable {
      * @return true if chunk was removed, false otherwise
      */
     public synchronized boolean removeChunk(final Chunk chunk) {
+
         if (chunk == null)
             return false;
         // Check disk space
@@ -287,6 +295,10 @@ public class Disk implements Serializable {
 
         if (!chunkFile.delete())
             return false;
+
+        BackupService.getInstance().getChannelsHandler().decreaseStoredConfirmation(chunk.getFileID(),chunk.getChunkNo(),(new Integer(BackupService.getInstance().getServerId())).toString());
+
+        //BackupService.getInstance().getChannelsHandler().stopListenStoredConfirmations(chunk.getFileID(),chunk.getChunkNo());
 
         // Delete file folder if no more chunks are stored
         File fileFolder = chunkFile.getParentFile();
@@ -387,7 +399,7 @@ public class Disk implements Serializable {
      * @param space to be free
      * @return true if the given space was made free, false if not
      */
-    public synchronized boolean freeSpace(int space, boolean enh) {
+    public synchronized boolean freeSpace(int space) {
         if (space > usedBytes)
             return false;
 
@@ -403,12 +415,8 @@ public class Disk implements Serializable {
                         Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
                         ChunkState state = chunksEntry.getValue();
                         if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
-                            if (!enh) {
                                 if (removeChunk(chunk))
                                     (new RemoveChunk(chunk)).run();
-                            } else {
-                                (new RemoveChunkEnh(chunk, minFreeSpace)).run();
-                            }
                         }
                         if (usedBytes <= minFreeSpace)
                             break outerLoop;
@@ -418,12 +426,8 @@ public class Disk implements Serializable {
                     for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
                     {
                         Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
-                        if (!enh) {
                             if (removeChunk(chunk))
                                 (new RemoveChunk(chunk)).run();
-                        } else {
-                            (new RemoveChunkEnh(chunk, minFreeSpace)).run();
-                        }
                         if (usedBytes <= minFreeSpace)
                             break outerLoop2;
                     }
@@ -438,5 +442,22 @@ public class Disk implements Serializable {
 
     public synchronized void printInfo() {
         System.out.println("Disk - f:" + this.getFreeBytes() + "b / u:" + this.getUsedBytes() + "b / c:" + this.getCapacity() + "b");
+    }
+
+    /**
+     * Get the mirrorDevices variable
+     * @return mirrorDevices
+     */
+    public synchronized Map<String, Map<Integer, ChunkState>> getMirrorDevices() {
+        return mirrorDevices;
+    }
+
+    /**
+     * Setes the variable mirrorDevices
+     * @param mirrorDevices
+     */
+    public synchronized void setMirrorDevices(Map<String, Map<Integer, ChunkState>> mirrorDevices){
+        this.mirrorDevices = mirrorDevices;
+        saveDisk();
     }
 }

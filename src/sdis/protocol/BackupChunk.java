@@ -74,7 +74,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
 
         while (!finished) {
             // Listen for stored confirmations
-            BackupService.getInstance().getChannelsHandler().listenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
+            //BackupService.getInstance().getChannelsHandler().listenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
 
             // Send backup chunk message
             BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MDB);
@@ -107,7 +107,7 @@ public class BackupChunk implements BackupProtocol, Runnable {
             }
 
             // Stop listen to stored confirmations
-            BackupService.getInstance().getChannelsHandler().stopListenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
+            //BackupService.getInstance().getChannelsHandler().stopListenStoredConfirmations(chunk.getFileID(), chunk.getChunkNo());
         }
         sem.release();
     }
