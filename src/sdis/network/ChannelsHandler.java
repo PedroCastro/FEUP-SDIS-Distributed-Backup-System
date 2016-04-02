@@ -268,6 +268,8 @@ public class ChannelsHandler {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
                     byte[] body = Utilities.extractBody(data, length);
+                    if (body.length != 0)
+                        System.out.println("[" + header[BackupProtocol.CHUNK_NUMBER_INDEX] + "] " + body.length);
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             body);
