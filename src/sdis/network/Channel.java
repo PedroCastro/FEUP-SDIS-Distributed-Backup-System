@@ -5,7 +5,7 @@ import java.net.InetAddress;
 /**
  * Network channel interface
  */
-interface Channel {
+public interface Channel {
 
     /**
      * Maximum size per packet

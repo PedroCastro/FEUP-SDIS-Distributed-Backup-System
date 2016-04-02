@@ -134,7 +134,7 @@ public class ChannelsHandler {
      * @param type type of the channel
      * @return channel with that type
      */
-    private Channel getChannelByType(final ChannelType type) {
+    public Channel getChannelByType(final ChannelType type) {
         for (final Channel channel : channels.keySet())
             if (channel.getType() == type)
                 return channel;
