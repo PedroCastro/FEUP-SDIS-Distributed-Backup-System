@@ -79,7 +79,7 @@ public class TCPChannel implements Channel {
     }
 
     /**
-     * Read a packet from the multicast channel
+     * Read a packet from the channel
      *
      * @return DatagramPacket
      */
@@ -89,7 +89,12 @@ public class TCPChannel implements Channel {
         try {
             channelSocket.setSoTimeout(1000); // Wait one second to read data
             Socket socket = channelSocket.accept();
-            socket.getInputStream().read(buffer);
+            int bytesRead;
+            int totalBytesRead = 0;
+            do {
+                bytesRead = socket.getInputStream().read(buffer, totalBytesRead, buffer.length - totalBytesRead);
+                totalBytesRead += bytesRead;
+            } while (bytesRead != -1);
             return buffer;
         } catch (SocketTimeoutException e) {
             return null;
