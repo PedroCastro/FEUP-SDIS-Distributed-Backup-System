@@ -40,9 +40,11 @@ public class TestApp {
                     return;
                 }
 
-
-                if (rmi.backup(args[2].toString(), Integer.parseInt(args[3])) == -1)
+                int answer = rmi.backup(args[2].toString(), Integer.parseInt(args[3]));
+                if (answer == -1)
                     System.out.println("File does not exist");
+                else if(answer == -2)
+                    System.out.println("File with same name already exists");
 
                 break;
             case "BACKUPENH":
@@ -53,8 +55,11 @@ public class TestApp {
                 }
 
 
-                if (rmi.backupEnh(args[2].toString(), Integer.parseInt(args[3])) == -1)
+                answer = rmi.backupEnh(args[2].toString(), Integer.parseInt(args[3]));
+                if (answer == -1)
                     System.out.println("File does not exist");
+                else if(answer == -2)
+                    System.out.println("File with same name already exists");
 
                 break;
             case "RESTORE":

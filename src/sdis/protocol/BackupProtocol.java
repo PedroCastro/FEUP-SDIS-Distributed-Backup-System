@@ -84,6 +84,11 @@ public interface BackupProtocol {
     String STORED_MESSAGE = "STORED";
 
     /**
+     * Deleted Chunk Message Type
+     */
+    String DELETED_MESSAGE = "DELETEDCHUNK";
+
+    /**
      * Get chunk message type
      */
     String GETCHUNK_MESSAGE = "GETCHUNK";

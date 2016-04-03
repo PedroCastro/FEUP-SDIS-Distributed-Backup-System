@@ -5,50 +5,39 @@ import sdis.network.ChannelType;
 import sdis.storage.Chunk;
 
 /**
- * Stored chunk protocol
+ * Created by Pedro Castro on 02/04/2016.
  */
-public class StoredChunk implements BackupProtocol, Runnable {
+public class ChunkDeleted implements BackupProtocol, Runnable {
 
+    private Chunk chunk;
     /**
-     * Chunk that has been stored
-     */
-    private final Chunk chunk;
-
-    /**
-     * Constructor of StoredChunk
+     * Constructor of ChunkDeleted
      *
      * @param chunk chunk that has been stored
      */
-    public StoredChunk(final Chunk chunk) {
+    public ChunkDeleted(final Chunk chunk) {
         this.chunk = chunk;
     }
 
     /**
-     * Run method of the stored chunk
+     * Run method of the deleted chunk
      */
     @Override
     public void run() {
-        // Wait a random time between 0 and 400 before sending the stored message
-        try {
-            Thread.sleep((int) (Math.random() * 400));
-        } catch (InterruptedException ignore) {
-        }
-
-        // Send stored chunk message
+        // Send delete file message
         byte[] message = getMessage();
         BackupService.getInstance().getChannelsHandler().sendMessage(message, ChannelType.MC);
     }
-
     /**
-     * Get the stored chunk protocol message
+     * Get the deleted chunk protocol message
      *
-     * @return stored chunk protocol message
+     * @return deleted chunk protocol message
      */
     @Override
     public byte[] getMessage() {
         String header =
-                BackupProtocol.STORED_MESSAGE + " "
-                        + BackupProtocol.VERSION + " "
+                BackupProtocol.DELETED_MESSAGE + " "
+                        + BackupProtocol.VERSION_ENHANCEMENT + " "
                         + BackupService.getInstance().getServerId() + " "
                         + chunk.getFileID() + " "
                         + chunk.getChunkNo()
