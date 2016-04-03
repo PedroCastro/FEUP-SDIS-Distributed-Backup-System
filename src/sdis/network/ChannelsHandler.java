@@ -236,7 +236,9 @@ public class ChannelsHandler {
                                 -1);
                     break;
                 case BackupProtocol.DELETE_MESSAGE:
-                    handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX]);
+                    if (header[BackupProtocol.VERSION_INDEX].equals(Integer.toString(BackupProtocol.VERSION_ENHANCEMENT)))
+                        handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX],true);
+                    else handleDeleteFile(header[BackupProtocol.FILE_ID_INDEX],false);
                     break;
                 case BackupProtocol.REMOVED_MESSAGE:
                     handleRemovedChunk(header[BackupProtocol.FILE_ID_INDEX],
@@ -299,6 +301,9 @@ public class ChannelsHandler {
      * @param deviceId    device that has mirrored the chunk
      */
     private synchronized void handleStoredChunk(final String fileId, final int chunkNumber, final String deviceId) {
+
+        System.out.println("Received Stored from " + deviceId + "- Chunk Number : " + chunkNumber);
+
         addStoredConfirmation(fileId, chunkNumber, deviceId);
 
         if (storedMessagesReceived.containsKey(fileId))
@@ -508,8 +513,8 @@ public class ChannelsHandler {
      *
      * @param fileId file id to delete all the chunks
      */
-    private synchronized void handleDeleteFile(final String fileId) {
-        if (!BackupService.getInstance().getDisk().removeChunks(fileId)) {
+    private synchronized void handleDeleteFile(final String fileId,boolean enhanced) {
+        if (!BackupService.getInstance().getDisk().removeChunks(fileId,enhanced)) {
             System.out.println("Failed to delete a file from the backup!");
             return;
         }

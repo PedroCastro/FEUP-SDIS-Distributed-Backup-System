@@ -340,7 +340,6 @@ public class BackupService implements RMI {
 
         return 0;
     }
-
     /**
      * Remote function to delete a file
      *
@@ -349,10 +348,30 @@ public class BackupService implements RMI {
      */
     @Override
     public int delete(String filename) throws RemoteException {
+        String id = this.getDisk().getId(filename);
+
+        if (id == null)
+            return -1;
+
+        (new DeleteFile(id,false)).run();
+
+        this.getDisk().removeFilename(filename);
+
+        return 0;
+    }
+
+    /**
+     * Remote function to delete a file
+     *
+     * @param filename filename of the file
+     * @throws RemoteException
+     */
+    @Override
+    public int deleteEnh(String filename) throws RemoteException {
 
         String id = this.getDisk().getId(filename);
 
-        if (id == Integer.toString(-1))
+        if (id == null)
             return -1;
 
         Thread thread = new Thread(){
@@ -366,7 +385,7 @@ public class BackupService implements RMI {
 
                 while(!finished){
                     System.out.println("Sending delete message");
-                    (new DeleteFile(id)).run();
+                    (new DeleteFile(id,true)).run();
                     try {
                         Thread.sleep(waitingTime);
                     } catch (InterruptedException ignore) {
