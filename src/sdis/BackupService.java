@@ -286,6 +286,14 @@ public class BackupService implements RMI {
             Thread thread = new Thread(new BackupChunk(newChunk));
             thread.start();
         }
+        if(size == FileChunker.getMaxSizeChunk())
+        {
+            byte[] currChunk = new byte[0];
+            Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
+            Thread thread = new Thread(new BackupChunk(newChunk));
+            thread.start();
+        }
+
         inputStream.close();
         f.close();
 
@@ -319,6 +327,7 @@ public class BackupService implements RMI {
             array.add(i);
 
         getChannelsHandler().waitingForChunks.put(id, array);
+        getChannelsHandler().waitingForChunksTCP.add(id);
 
         //locking semaphore to wait for all chunks to be restored
         sem.acquire();
@@ -469,13 +478,22 @@ public class BackupService implements RMI {
         FileInputStream f = new FileInputStream(file);
         BufferedInputStream inputStream = new BufferedInputStream(f);
 
-        int size;
+        int size, lastSize = 0;
         while ((size = inputStream.read(chunk)) > 0) {
             byte[] currChunk = Arrays.copyOfRange(chunk, 0, size);
             Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
             Thread thread = new Thread(new BackupChunk(newChunk, true));
             thread.start();
+            lastSize = size;
         }
+        if(lastSize == FileChunker.getMaxSizeChunk())
+        {
+            byte[] currChunk = new byte[0];
+            Chunk newChunk = new Chunk(id, part++, currChunk, repDegree);
+            Thread thread = new Thread(new BackupChunk(newChunk,true));
+            thread.start();
+        }
+        System.out.println("Size : " + size);
         inputStream.close();
         f.close();
 
@@ -511,6 +529,7 @@ public class BackupService implements RMI {
             array.add(i);
 
         getChannelsHandler().waitingForChunks.put(id, array);
+        getChannelsHandler().waitingForChunksTCP.add(id);
 
         //locking semaphore to wait for all chunks to be restored
         sem.acquire();

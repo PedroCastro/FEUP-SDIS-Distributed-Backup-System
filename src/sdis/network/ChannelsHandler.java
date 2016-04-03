@@ -25,6 +25,11 @@ public class ChannelsHandler {
     public final Map<String, ArrayList<Integer>> waitingForChunks;
 
     /**
+     * Chunks that are received enhanced
+     */
+    public  final ArrayList<String> waitingForChunksTCP;
+
+    /**
      * Map with all the channels and correspondent thread
      */
     private final Map<Channel, Thread> channels;
@@ -72,6 +77,7 @@ public class ChannelsHandler {
         this.mirrorDevices = BackupService.getInstance().getDisk().getMirrorDevices();
         this.storedMessagesReceived = new HashMap<>();
         this.waitingForChunks = new HashMap<>();
+        this.waitingForChunksTCP = new ArrayList<>();
         this.chunksForRestore = new HashMap<>();
         this.chunksBackupAgain = new HashMap<>();
         this.storedListened = new HashMap<>();
@@ -285,7 +291,7 @@ public class ChannelsHandler {
                     byte[] body = Utilities.extractBody(data, length);
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
-                            body);
+                            body, channel);
                     break;
             }
         }
@@ -468,7 +474,7 @@ public class ChannelsHandler {
      * @param chunkNumber number of the chunk
      * @param data        data of the chunk
      */
-    private synchronized void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data) {
+    private synchronized void handleRestoreChunk(final String fileId, final int chunkNumber, final byte[] data, ChannelType channel) {
         // Check if we were waiting to send this chunk for being restored
         if (chunksForRestore.containsKey(fileId)) {
             Map<Integer, RestoreChunk> chunks = chunksForRestore.get(fileId);
@@ -483,7 +489,7 @@ public class ChannelsHandler {
             return;
 
         // Check data length
-        if (data.length <= 0)
+        if (data.length <= 0 && waitingForChunksTCP.indexOf(fileId) != 1 && channel == ChannelType.MDR)
             return;
 
         final List<Integer> chunksWaiting = waitingForChunks.get(fileId);
@@ -500,6 +506,7 @@ public class ChannelsHandler {
 
         if (chunksWaiting.isEmpty()) {
             waitingForChunks.remove(fileId);
+            waitingForChunksTCP.remove(fileId);
             BackupService.getInstance().sem.release();
         }
 
