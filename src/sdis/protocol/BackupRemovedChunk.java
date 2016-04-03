@@ -46,7 +46,7 @@ public class BackupRemovedChunk implements BackupProtocol, Runnable {
 
         new BackupChunk(chunk, false).run();
 
-        //new StoredChunk(chunk).run();
+        new StoredChunk(chunk).run();
     }
 
     /**

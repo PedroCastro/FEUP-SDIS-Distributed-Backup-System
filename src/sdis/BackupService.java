@@ -8,6 +8,7 @@ import sdis.protocol.BackupChunk;
 import sdis.protocol.DeleteFile;
 import sdis.protocol.GetChunk;
 import sdis.storage.Chunk;
+import sdis.storage.ChunkState;
 import sdis.storage.Disk;
 import sdis.storage.FileChunker;
 
@@ -22,15 +23,12 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BackupService implements RMI {
 
-    /**
-     * Default capacity of the disk
-     */
-    private final static int DEFAULT_DISK_CAPACITY = 100000000; // 95MB
     /**
      * Instance of the backup service
      */
@@ -46,7 +44,7 @@ public class BackupService implements RMI {
     /**
      * Channels handler
      */
-    private final ChannelsHandler channelsHandler;
+    private ChannelsHandler channelsHandler;
     /**
      * Semaphore for restoring chunks
      */
@@ -55,6 +53,11 @@ public class BackupService implements RMI {
      * Identification of the server
      */
     private String serverId = "default";
+
+    /**
+     * Files received deletion
+     */
+    public HashMap<String,HashMap<Integer,Integer>> receivedDeletion;
     /**
      * File name of the disk
      */
@@ -71,7 +74,7 @@ public class BackupService implements RMI {
         this.DISK_FILENAME = serverId + "_disk" + ".iso";
         this.disk = loadDisk();
         saveDisk();
-        this.channelsHandler = new ChannelsHandler(serverId);
+        this.receivedDeletion = new HashMap<>();
 
         // Print disk information
         disk.printInfo();
@@ -100,6 +103,8 @@ public class BackupService implements RMI {
 
         instance = new BackupService(args[0]);
 
+        instance.channelsHandler = new ChannelsHandler(args[0]);
+
         instance.createRMI();
 
         // Create multicast channels
@@ -112,7 +117,7 @@ public class BackupService implements RMI {
         instance.startService();
 
 
-        instance.reclaim(instance.disk.getUsedBytes());
+        //instance.reclaim(instance.disk.getUsedBytes());
         try {
             Thread.sleep(100000000);
         } catch (InterruptedException e) {
@@ -167,8 +172,8 @@ public class BackupService implements RMI {
         }
         // Disk does not exist
         else {
-            System.out.println("Starting an empty disk with capacity of " + DEFAULT_DISK_CAPACITY + " bytes!");
-            return new Disk(DEFAULT_DISK_CAPACITY);
+            System.out.println("Starting an empty disk!");
+            return new Disk();
         }
     }
 
@@ -251,6 +256,11 @@ public class BackupService implements RMI {
     public int backup(String filename, int repDegree) throws IOException {
         File file = new File(filename);
 
+        if(this.disk.filenames.containsKey(filename))
+        {
+            return -2;
+        }
+
         if (!file.exists()) {
             return -1;
         }
@@ -258,6 +268,9 @@ public class BackupService implements RMI {
         String id = FileChunker.getFileChecksum(file);
 
         this.disk.addFilename(filename, id);
+        if(this.getDisk().idSet.indexOf(id) == -1)
+            this.getDisk().idSet.add(id);
+        this.getDisk().saveDisk();
 
         //
         int part = 0;
@@ -339,11 +352,54 @@ public class BackupService implements RMI {
 
         String id = this.getDisk().getId(filename);
 
-        if (id == null)
+        if (id == Integer.toString(-1))
             return -1;
 
-        (new DeleteFile(id)).run();
+        Thread thread = new Thread(){
+            public void run(){
 
+                boolean finished = false;
+                int waitingTime = 1000;
+
+                //creating receiver
+                receivedDeletion.put(id,new HashMap<>());
+
+                while(!finished){
+                    System.out.println("Sending delete message");
+                    (new DeleteFile(id)).run();
+                    try {
+                        Thread.sleep(waitingTime);
+                    } catch (InterruptedException ignore) {
+                    }
+                    boolean flag = true;
+                    for(HashMap.Entry<Integer,ChunkState> chunksStates : BackupService.getInstance().getChannelsHandler().getMirrorDevices().get(id).entrySet())
+                    {
+                        if(!(BackupService.getInstance().receivedDeletion.get(id).containsKey(chunksStates.getKey())))
+                        {
+                            flag = false;
+                            break;
+                        }
+                        if(chunksStates.getValue().getReplicationDegree() >
+                                BackupService.getInstance().receivedDeletion.get(id).get(chunksStates.getKey())){
+                            flag = false;
+                            break;
+                        }
+                    }
+                    if(!flag)
+                    {
+                        waitingTime = waitingTime*2;
+                        if(waitingTime > 30000)
+                            waitingTime = 30000;
+                    }
+                    else{
+                        finished = true;
+                        System.out.println("File deleted from the system");
+                    }
+                }
+            }
+        };
+
+        thread.start();
         this.getDisk().removeFilename(filename);
 
         return 0;
@@ -371,6 +427,11 @@ public class BackupService implements RMI {
     public int backupEnh(String filename, int repDegree) throws IOException {
         File file = new File(filename);
 
+        if(this.disk.filenames.containsKey(filename))
+        {
+            return -2;
+        }
+
         if (!file.exists()) {
             return -1;
         }
@@ -378,6 +439,9 @@ public class BackupService implements RMI {
         String id = FileChunker.getFileChecksum(file);
 
         this.disk.addFilename(filename, id);
+        if(this.getDisk().idSet.indexOf(id) == -1)
+            this.getDisk().idSet.add(id);
+        this.getDisk().saveDisk();
 
         //
         int part = 0;
@@ -417,6 +481,11 @@ public class BackupService implements RMI {
     public int restoreEnh(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException {
         String id = this.getDisk().getId(filename);
 
+        if(BackupService.getInstance().getDisk().filenames.containsKey(filename))
+        {
+            return -2;
+        }
+
         if (id == null)
             return -1;
 
@@ -435,7 +504,7 @@ public class BackupService implements RMI {
         for (int i = 0; i < numberOfChunks; i++) {
             Chunk newChunk = new Chunk(id, i, (new byte[0]), 0);
             Thread thread = new Thread(new GetChunk(newChunk, true, getChannelsHandler().getChannelByType(ChannelType.TDR).getPort()));
-            thread.start();
+            thread.run();
         }
 
         //waits to aquire the sem ->ends the restore of all files

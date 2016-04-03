@@ -1,11 +1,14 @@
 package sdis.storage;
 
 import sdis.BackupService;
+import sdis.protocol.ChunkDeleted;
 import sdis.protocol.RemoveChunk;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
@@ -23,14 +26,14 @@ public class Disk implements Serializable {
      */
     public Map<String, String> filenames;
     /**
+     * Set of ids this peer has started
+     */
+    public ArrayList<String> idSet;
+    /**
      * HashMap to be able to retrieve the number of chunks of a file
      */
     public Map<String, Integer> filesizes;
     Semaphore sem = new Semaphore(1);
-    /**
-     * Capacity bytes of the disk
-     */
-    private int capacityBytes;
 
     /**
      * Map of all chunks on the system
@@ -51,36 +54,14 @@ public class Disk implements Serializable {
     /**
      * Constructor of Disk
      *
-     * @param capacity capacity of the disk
      */
-    public Disk(int capacity) {
-        this.capacityBytes = capacity;
+    public Disk() {
         this.usedBytes = 0;
         this.files = new ConcurrentHashMap<>();
         this.filenames = new HashMap<>();
         this.filesizes = new HashMap<>();
         this.mirrorDevices = new HashMap<>();
-    }
-
-    /**
-     * Get the capscity of the disk
-     *
-     * @return capacity of the disk
-     */
-    public synchronized int getCapacity() {
-        return capacityBytes;
-    }
-
-    /**
-     * Set the capacity of the disk
-     *
-     * @param bytes number of bytes of the capacity
-     */
-    public synchronized void setCapacity(final int bytes) {
-        capacityBytes = bytes;
-
-        // Save the disk
-        this.saveDisk();
+        this.idSet = new ArrayList<>();
     }
 
     /**
@@ -90,27 +71,6 @@ public class Disk implements Serializable {
      */
     public synchronized int getUsedBytes() {
         return usedBytes;
-    }
-
-    /**
-     * Get the free bytes of the disk
-     *
-     * @return free bytes of the disk
-     */
-    public synchronized int getFreeBytes() {
-        return capacityBytes - usedBytes;
-    }
-
-    /**
-     * Add capacity to the disk
-     *
-     * @param bytes number of bytes to be added to capacity
-     */
-    public synchronized void addCapacity(final int bytes) {
-        capacityBytes += bytes;
-
-        // Save the disk
-        this.saveDisk();
     }
 
     /**
@@ -195,12 +155,6 @@ public class Disk implements Serializable {
     public synchronized boolean saveChunk(final Chunk chunk) {
         if (chunk == null)
             return false;
-
-        // Check free space
-        if (chunk.getData().length > getFreeBytes()) {
-            System.out.println("Not enough space in disk!");
-            return false;
-        }
 
         // Save chunk in the disk
         try {
@@ -319,6 +273,13 @@ public class Disk implements Serializable {
         // Save the disk
         this.saveDisk();
 
+        ChunkDeleted chunkDeleted = new ChunkDeleted(chunk);
+
+        chunkDeleted.run();
+
+        // Save the disk
+        this.saveDisk();
+
         return true;
     }
 
@@ -409,28 +370,30 @@ public class Disk implements Serializable {
         Thread thread = new Thread() {
             public void run() {
                 outerLoop:
-                for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-                    for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
-                    {
-                        Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
-                        ChunkState state = chunksEntry.getValue();
-                        if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
+                {
+                    for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+                        for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+                        {
+                            Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
+                            ChunkState state = chunksEntry.getValue();
+                            if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
                                 if (removeChunk(chunk))
                                     (new RemoveChunk(chunk)).run();
+                            }
+                            if (usedBytes <= minFreeSpace)
+                                break outerLoop;
                         }
-                        if (usedBytes <= minFreeSpace)
-                            break outerLoop;
-                    }
-                outerLoop2:
-                for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
-                    for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
-                    {
-                        Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
+                    outerLoop2:
+                    for (ConcurrentHashMap.Entry<String, ConcurrentHashMap<Integer, ChunkState>> filesEntry : files.entrySet())//iterate through files
+                        for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
+                        {
+                            Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
                             if (removeChunk(chunk))
                                 (new RemoveChunk(chunk)).run();
-                        if (usedBytes <= minFreeSpace)
-                            break outerLoop2;
-                    }
+                            if (usedBytes <= minFreeSpace)
+                                break outerLoop2;
+                        }
+                }
             }
         };
 
@@ -441,7 +404,7 @@ public class Disk implements Serializable {
     }
 
     public synchronized void printInfo() {
-        System.out.println("Disk - f:" + this.getFreeBytes() + "b / u:" + this.getUsedBytes() + "b / c:" + this.getCapacity() + "b");
+        System.out.println("Disk - f:" + this.getUsedBytes() + "b");
     }
 
     /**
