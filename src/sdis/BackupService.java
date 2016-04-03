@@ -497,13 +497,8 @@ public class BackupService implements RMI {
      * @throws IOException
      */
     @Override
-    public int restoreEnh(String filename) throws RemoteException, FileNotFoundException, InterruptedException, IOException {
+    public int restoreEnh(String filename) throws InterruptedException, IOException {
         String id = this.getDisk().getId(filename);
-
-        if(BackupService.getInstance().getDisk().filenames.containsKey(filename))
-        {
-            return -2;
-        }
 
         if (id == null)
             return -1;
