@@ -87,7 +87,7 @@ public class TCPChannel implements Channel {
     public Object read() {
         // Cached items
         final ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
-        this.buffer = new byte[1];
+        this.buffer = new byte[MAX_SIZE_PACKET];
         try {
             channelSocket.setSoTimeout(1); // Wait one second to read data
             Socket socket = channelSocket.accept();
@@ -95,7 +95,7 @@ public class TCPChannel implements Channel {
             do {
                 bytesRead = socket.getInputStream().read(buffer);
                 if (bytesRead != -1)
-                    byteArray.write(buffer);
+                    byteArray.write(buffer, 0, bytesRead);
             } while (bytesRead != -1);
             socket.close();
             if (byteArray.size() <= 0)

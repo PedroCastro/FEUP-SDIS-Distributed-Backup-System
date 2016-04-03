@@ -68,7 +68,6 @@ public class GetChunk implements BackupProtocol, Runnable {
 
             if (index != -1) {
                 try {
-                    //System.out.println("Waiting for stored chunk confirmations...");
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();

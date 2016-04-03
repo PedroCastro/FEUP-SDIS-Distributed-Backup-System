@@ -215,7 +215,7 @@ public class ChannelsHandler {
             return;
 
 
-        // Multicast Control Channel
+        // Control Channel
         if (channel == ChannelType.MC) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.STORED_MESSAGE:
@@ -262,7 +262,7 @@ public class ChannelsHandler {
                     break;
             }
         }
-        // Multicast Data Backup Channel
+        // Data Backup Channel
         else if (channel == ChannelType.MDB) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.PUTCHUNK_MESSAGE:
@@ -278,13 +278,11 @@ public class ChannelsHandler {
                     break;
             }
         }
-        // Multicast Data Restore Channel
+        // Data Restore Channel or TCP Restore Channel
         else if (channel == ChannelType.MDR || channel == ChannelType.TDR) {
             switch (header[BackupProtocol.MESSAGE_TYPE_INDEX]) {
                 case BackupProtocol.CHUNK_MESSAGE:
                     byte[] body = Utilities.extractBody(data, length);
-                    if (body.length != 0)
-                        System.out.println("[" + header[BackupProtocol.CHUNK_NUMBER_INDEX] + "] " + body.length);
                     handleRestoreChunk(header[BackupProtocol.FILE_ID_INDEX],
                             Integer.parseInt(header[BackupProtocol.CHUNK_NUMBER_INDEX]),
                             body);
@@ -480,12 +478,12 @@ public class ChannelsHandler {
             }
         }
 
-        // Check data length
-        if (data.length <= 0)
-            return;
-
         // Check if we were expecting the chunk to come
         if (!waitingForChunks.containsKey(fileId))
+            return;
+
+        // Check data length
+        if (data.length <= 0)
             return;
 
         final List<Integer> chunksWaiting = waitingForChunks.get(fileId);

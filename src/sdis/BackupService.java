@@ -518,7 +518,7 @@ public class BackupService implements RMI {
         for (int i = 0; i < numberOfChunks; i++) {
             Chunk newChunk = new Chunk(id, i, (new byte[0]), 0);
             Thread thread = new Thread(new GetChunk(newChunk, true, getChannelsHandler().getChannelByType(ChannelType.TDR).getPort()));
-            thread.run();
+            thread.start();
         }
 
         //waits to aquire the sem ->ends the restore of all files
