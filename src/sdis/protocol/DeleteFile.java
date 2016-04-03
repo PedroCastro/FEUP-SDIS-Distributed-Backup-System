@@ -12,14 +12,19 @@ public class DeleteFile implements BackupProtocol, Runnable {
      * File hash to be deleted
      */
     private final String fileHash;
+    /**
+     * Enhaced Version of DeleteFile
+     */
+    private boolean enhanced;
 
     /**
      * Constructor of DeleteFile
      *
      * @param fileHash file to be deleted
      */
-    public DeleteFile(final String fileHash) {
+    public DeleteFile(final String fileHash,boolean enhanced) {
         this.fileHash = fileHash;
+        this.enhanced = enhanced;
     }
 
     /**
@@ -43,7 +48,7 @@ public class DeleteFile implements BackupProtocol, Runnable {
     public byte[] getMessage() {
         String header =
                 BackupProtocol.DELETE_MESSAGE + " "
-                        + BackupProtocol.VERSION + " "
+                        + (enhanced ? BackupProtocol.VERSION_ENHANCEMENT :BackupProtocol.VERSION) + " "
                         + BackupService.getInstance().getServerId() + " "
                         + fileHash + " "
                         + BackupProtocol.CRLF

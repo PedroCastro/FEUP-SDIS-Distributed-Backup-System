@@ -196,14 +196,14 @@ public class Disk implements Serializable {
      * @param fileHash file hash to delete all the chunks
      * @return true if successfull, false otherwise
      */
-    public synchronized boolean removeChunks(final String fileHash) {
+    public synchronized boolean removeChunks(final String fileHash, boolean enhanced) {
         if (!files.containsKey(fileHash))
             return true;
 
         // Remove all chunks
         Map<Integer, ChunkState> chunks = files.get(fileHash);
         for (Map.Entry<Integer, ChunkState> entry : new HashMap<>(chunks).entrySet()) {
-            if (!removeChunk(fileHash, entry.getKey()))
+            if (!removeChunk(fileHash, entry.getKey(),enhanced))
                 return false;
         }
 
@@ -217,10 +217,10 @@ public class Disk implements Serializable {
      * @param chunkNumber chunk number to be removed
      * @return true if successfull, false otherwise
      */
-    public synchronized boolean removeChunk(final String fileHash, final int chunkNumber) {
+    public synchronized boolean removeChunk(final String fileHash, final int chunkNumber, boolean enhanced) {
         Chunk chunk = getChunk(fileHash, chunkNumber);
         if (chunk != null)
-            return removeChunk(getChunk(fileHash, chunkNumber));
+            return removeChunk(getChunk(fileHash, chunkNumber),enhanced);
         else return true;
     }
 
@@ -230,7 +230,7 @@ public class Disk implements Serializable {
      * @param chunk chunk to be removed
      * @return true if chunk was removed, false otherwise
      */
-    public synchronized boolean removeChunk(final Chunk chunk) {
+    public synchronized boolean removeChunk(final Chunk chunk,boolean enhanced) {
 
         if (chunk == null)
             return false;
@@ -273,9 +273,11 @@ public class Disk implements Serializable {
         // Save the disk
         this.saveDisk();
 
-        ChunkDeleted chunkDeleted = new ChunkDeleted(chunk);
+        if(enhanced) {
+            ChunkDeleted chunkDeleted = new ChunkDeleted(chunk);
 
-        chunkDeleted.run();
+            chunkDeleted.run();
+        }
 
         // Save the disk
         this.saveDisk();
@@ -377,7 +379,7 @@ public class Disk implements Serializable {
                             Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
                             ChunkState state = chunksEntry.getValue();
                             if (state.getReplicationDegree() > state.getMinReplicationDegree()) {
-                                if (removeChunk(chunk))
+                                if (removeChunk(chunk,false))
                                     (new RemoveChunk(chunk)).run();
                             }
                             if (usedBytes <= minFreeSpace)
@@ -388,7 +390,7 @@ public class Disk implements Serializable {
                         for (ConcurrentHashMap.Entry<Integer, ChunkState> chunksEntry : filesEntry.getValue().entrySet())//iterate chunkStates
                         {
                             Chunk chunk = getChunk(filesEntry.getKey(), chunksEntry.getKey());
-                            if (removeChunk(chunk))
+                            if (removeChunk(chunk,false))
                                 (new RemoveChunk(chunk)).run();
                             if (usedBytes <= minFreeSpace)
                                 break outerLoop2;

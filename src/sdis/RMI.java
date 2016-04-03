@@ -63,4 +63,6 @@ public interface RMI extends Remote {
      * @throws IOException
      */
     int restoreEnh(String filename) throws InterruptedException, IOException;
+
+    int deleteEnh(String filename) throws RemoteException;
 }
