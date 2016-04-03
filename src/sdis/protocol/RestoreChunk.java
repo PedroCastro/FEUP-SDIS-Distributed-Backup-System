@@ -78,6 +78,7 @@ public class RestoreChunk implements BackupProtocol, Runnable {
                 message = getMessage();
                 outToServer.write(message);
                 outToServer.close();
+                clientSocket.close();
             } catch (IOException e) {
             }
         }
