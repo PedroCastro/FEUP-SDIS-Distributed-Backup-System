@@ -606,7 +606,7 @@ public class ChannelsHandler {
     public synchronized void decreaseStoredConfirmation(final String fileId, final int chunkNumber, final String deviceId){
         if(!mirrorDevices.containsKey(fileId))
         {
-            mirrorDevices.put(fileId,new HashMap<>());
+            mirrorDevices.put(fileId, new HashMap<>());
         }
         Map<Integer, ChunkState> fileReplicasCount = mirrorDevices.get(fileId);
         if (!fileReplicasCount.containsKey(chunkNumber))

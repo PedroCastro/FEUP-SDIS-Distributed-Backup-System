@@ -62,7 +62,6 @@ public class RestoreChunk implements BackupProtocol, Runnable {
         } catch (InterruptedException ignore) {
         }
 
-        System.out.println("[" + chunk.getChunkNo() + "] - " + restore.get());
         if (!restore.get())
             return;
 
