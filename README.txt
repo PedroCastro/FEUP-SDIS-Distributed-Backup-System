@@ -32,3 +32,7 @@ The first peer to initiate will create the RMI registry, the following peers wil
 2.6 Delete
         java TestApp <PEER ID> DELETE <FILE>
         eg: TestApp 01 DELETE image.jpg
+
+2.7 Delete Enhanced
+        java TestApp <PEER ID> DELETEENH <FILE>
+        eg: TestApp 01 DELETEENH image.jpg
